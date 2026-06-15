@@ -17,7 +17,7 @@ AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // .agent_name // empty' 2>/dev/
 [[ "$AGENT_TYPE" != "seednote" ]] && exit 0
 
 # 找最近被引用的 $DIR：Codex 用 PLUGIN_ROOT/PWD；Claude Code 兼容 CLAUDE_PROJECT_DIR
-WORKSPACE_ROOT="${CODEX_PROJECT_DIR:-${PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR:-$PWD}}}"
+WORKSPACE_ROOT="${PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR:-$PWD}}"
 # 若 PLUGIN_ROOT 指向的是插件缓存目录而非项目根，回退到 PWD
 [[ "$WORKSPACE_ROOT" == */plugins/cache/* ]] && WORKSPACE_ROOT="$PWD"
 SEEDNOTE_DIR=$(ls -td "$WORKSPACE_ROOT"/output/seednote/*/ 2>/dev/null | head -1 || true)
