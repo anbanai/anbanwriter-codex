@@ -50,7 +50,8 @@ Key skill groups:
 - **Live slicing**: `live-slice`, `capcut-draft`
 - **Design**: `line-art-coloring`
 - **Short video**: `short-video-cover`, `portrait-pose-variants`
-- **Config**: `init`, `config` (Codex-specific `init` — does not auto-write `~/.codex/config.toml`; documents the user's manual setup steps instead)
+- **Setup**: `setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
+- **Config**: `config` (channel-level runtime configuration: writer, theme, image provider, positioning)
 
 ### MCP Server (`.mcp.json`)
 

@@ -1,9 +1,9 @@
 ---
-name: init
-description: Use when user mentions "初始化", "init", "配置", "设置", "setup", "第一次使用", "API Key", "密钥", or when MCP tools fail with auth/connection errors suggesting missing ANBANWRITER_API_KEY.
+name: setup
+description: Use when user mentions "初始化", "setup", "第一次使用", "API Key", "密钥", or when MCP tools fail with auth/connection errors suggesting missing ANBANWRITER_API_KEY.
 ---
 
-# init — anbanwriter 初始化 (Codex)
+# setup — anbanwriter 初始化 (Codex)
 
 ## 预检
 
@@ -60,11 +60,11 @@ export ANBANWRITER_DEFAULT_CHANNEL="<频道 ID>"
 
 告知用户：
 
-> 配置完成。**请退出并重新启动 Codex**，让 MCP 连接生效。重启后再次运行 `$init` 验证连接。
+> 配置完成。**请退出并重新启动 Codex**，让 MCP 连接生效。重启后再次运行 `$setup` 验证连接。
 
 ## 重启后验证
 
-用户重启 Codex 后，`$init` 的预检步骤应自动执行。预期结果：
+用户重启 Codex 后，`$setup` 的预检步骤应自动执行。预期结果：
 - `list_channels` 调用成功，返回可用频道列表
 - 输出每个频道的 platform、name 和 ID
 
