@@ -141,7 +141,7 @@ Traditional Chinese aesthetic, ink wash texture with warm photographic tones. A 
 1. 每张使用 image-plan.md 中对应章节的分析填充 prompt
 2. `output_path` 设为 `$DIR/img_01.png`、`$DIR/img_02.png` ...
 3. **`ref_image_path` 始终传入封面路径 `$DIR/cover.png`** 保持视觉一致性
-4. 生成后调用 `upload_image` 上传获取 CDN URL
+4. `generate_image` 调用时带 `upload_to_cdn=true`，生成与上传原子化，返回值直接携带 CDN URL（`wechat_url`）
 5. 将 `![描述](CDN_URL)` 插入到章节关键段落之后（不紧跟 `##` 标题，不在章节末尾）
 
 > **关键规则**：每张配图必须使用章节具体内容构造独立 prompt，确保内容差异化。通过封面参考图保持视觉一致性。

@@ -9,8 +9,8 @@ description: Manages images for WeChat article (公众号图文) content includi
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `generate_image` (channel_id, prompt, image_type, output_path, task_id, ref_image_path) | 生成单张图片，返回 download_url 和 file_path |
-| `upload_image` (channel_id, file_path) | 上传图片到微信 CDN，返回 CDN URL |
+| `generate_image` (channel_id, prompt, image_type, output_path, task_id, ref_image_path, upload_to_cdn?) | 生成单张图片。`upload_to_cdn=true`（**生成与上传原子化**）时在同一调用内完成"生成→保存→压缩→上传微信 CDN"，直接返回 `wechat_url` + `media_id`；上传失败返回 `upload_error`（生成不浪费，仅重试上传）。返回 download_url、file_path、wechat_url、media_id |
+| `upload_image` (channel_id, file_path) | 上传**外部/下载来的**图片到微信 CDN，返回 CDN URL。**已生成的图不再用此工具**——生成时直接用 `generate_image(upload_to_cdn=true)` 原子上传；仅当 `generate_image` 返回 `upload_error` 时作为重传兜底 |
 | `download_image` (channel_id, url) | 下载在线图片 |
 | `compress_image` (file_path) | 压缩图片 |
 
@@ -37,8 +37,8 @@ description: Manages images for WeChat article (公众号图文) content includi
 3. 执行三维风格分析（账号定位 + 内容主题 + 目标受众）→ 确定视觉风格、色彩基调、情绪氛围
 4. 从零构建封面 prompt（**不使用 writer YAML 的 cover_prompt**）
 5. 构建 prompt 时（如 MCP 工具可用）可调用 `list_resources(category="image_presets")` 获取封面预设模板列表，再用 `get_resource(category="image_presets", name="cover-default")` 等获取具体预设模板，将 `{{ARTICLE_TITLE}}`、`{{ARTICLE_SUMMARY}}`、`{{VISUAL_STYLE}}`、`{{ASPECT_RATIO}}` 等变量替换为实际内容。如果工具不可用，直接从零构建 prompt
-6. 调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1")` 生成
-7. 调用 `upload_image(channel_id="$CHANNEL_ID", file_path="$DIR/cover.png")` 上传，获取 `media_id`
+6. 调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1", upload_to_cdn=true)` 生成——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`。**不再单独调用 `upload_image`**。
+7. 从 `generate_image` 返回值取 `media_id` + `wechat_url`。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(channel_id="$CHANNEL_ID", file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**。
 
 ### 产出
 
@@ -102,10 +102,10 @@ description: Manages images for WeChat article (公众号图文) content includi
 对 `image-plan.md` 中每个章节配图执行：
 
 1. 根据 image-plan 中的分析构建 prompt（必须包含章节具体概念、比喻或案例）
-2. 调用 `generate_image`（`channel_id="$CHANNEL_ID"`, `prompt=章节提示词`, `image_type="content"`, `output_path="$DIR/img_N.png"`, `task_id="$TASK_ID"`, `ref_image_path="$DIR/cover.png"`）
-3. 调用 `upload_image`（`channel_id="$CHANNEL_ID"`, `file_path="$DIR/img_N.png"`）→ 获取 CDN URL
-4. 将 `![描述](CDN_URL)` 插入到章节关键段落之后（不紧跟 `##` 标题，不在章节末尾）
-5. 将生成信息写入 `$DIR/images.json`，用于后续视觉质量审计
+2. 调用 `generate_image`（`channel_id="$CHANNEL_ID"`, `prompt=章节提示词`, `image_type="content"`, `output_path="$DIR/img_N.png"`, `task_id="$TASK_ID"`, `ref_image_path="$DIR/cover.png"`, **`upload_to_cdn=true`**）——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，返回值直接带 `wechat_url` + `media_id`。**不再有独立的 `upload_image` 阶段**。
+3. 从 `generate_image` 返回值取 `wechat_url` → 作为该图的 CDN URL。若返回 `upload_error`（生成成功但上传失败），记到记录的 `upload_error` 字段并用 `upload_image(file_path="$DIR/img_N.png")` 单独重传（**不重新生成**）。
+4. **每张图返回后立即原子写 `$DIR/images.json`**：先写临时文件 `$DIR/.images.json.tmp` → `fsync` → `rename` 覆盖 `$DIR/images.json`。**绝不要"攒齐所有图再一次性写"**——那是丢失窗口；逐张落盘使中断最多丢失"正在生成的那一张"，已上 CDN 的全部安全。每条记录在原有审计字段基础上增加 `wechat_url` 和 `media_id`。
+5. 将 `![描述](CDN_URL)` 插入到章节关键段落之后（不紧跟 `##` 标题，不在章节末尾）
 
 ### Prompt 要求
 
@@ -125,7 +125,7 @@ description: Manages images for WeChat article (公众号图文) content includi
 - [ ] **风格一致性**：读取 `$DIR/images.json`，确认所有内容配图记录 `ref_image_path="$DIR/cover.png"`
 - [ ] **视觉多样性**：读取 `$DIR/image-plan.md` 与 `$DIR/images.json`，确认 3 张以上配图使用 3 种以上不同 `composition_type`
 - [ ] **内容关联性**：逐项对照 `image-plan.md`，确认每个 prompt 引用了 `source_excerpt` 或章节具体内容（非通用描述）
-- [ ] **审计完整性**：每条图片记录必须包含 `chapter_title`、`composition_type`、`visual_subject`、`prompt_source_excerpt`、`ref_image_path`、`image_type`、`quality_status`
+- [ ] **审计完整性**：每条图片记录必须包含 `chapter_title`、`composition_type`、`visual_subject`、`prompt_source_excerpt`、`ref_image_path`、`image_type`、`quality_status`、`wechat_url`、`media_id`
 
 未通过检查时：重试对应配图（更换 prompt 措辞），仍失败则记录问题继续后续章节。
 
@@ -134,7 +134,7 @@ description: Manages images for WeChat article (公众号图文) content includi
 ## 保存结果
 
 - 将含 CDN 图片链接的文章覆盖写回 `$DIR/04-article-final.md`
-- 将所有配图信息保存为 `$DIR/images.json`（含 index, image_type, chapter_title, composition_type, visual_subject, prompt, prompt_source_excerpt, ref_image_path, file_path, url, quality_status）
+- 将所有配图信息保存为 `$DIR/images.json`（含 index, image_type, chapter_title, composition_type, visual_subject, prompt, prompt_source_excerpt, ref_image_path, file_path, url, wechat_url, media_id, quality_status）
 
 ---
 
