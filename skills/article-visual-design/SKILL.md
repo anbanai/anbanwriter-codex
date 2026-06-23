@@ -16,11 +16,16 @@ description: Manages images for WeChat article (公众号图文) content includi
 
 ---
 
-## 核心原则：账号驱动，非 Writer 驱动
+## 核心原则：配置优先，账号/内容细化，Writer 无关
 
-**Writer YAML 定义文字风格（语气、结构、修辞），不定义图片风格。**
+公众号"模板"由三个**正交**维度组成：图片视觉（`style`）、写作风格（`writing_style`）、排版样式（`theme`）。三者各自独立解析，互不推导——**写作风格绝不决定图片视觉**。
 
-图片的视觉风格由账号定位、内容主题和目标受众三个维度独立确定，与 writer 选择无关。即使使用 dan-koe（犀利深刻写作风格）为养生账号写文章，图片也应使用温暖自然的视觉风格，而非维多利亚版画。
+**Writer YAML 仅定义文字风格，不携带任何视觉/封面字段**（曾经的 `cover_style`/`cover_prompt` 已移除）。
+
+视觉风格的**权威来源**是任务已解析的 `style` 字段（由 `get_channel_profile` 按 `task > template > plan > channel` 解析，并通过 profile 的 `style` / `style_source` / `template_style` 字段返回）：
+
+- **有配置值**（`style_source` 为 task/template/plan/channel 之一）→ 以它为**权威视觉锚点**。下面的三维分析只做**细化充实**（配色、情绪、构图），**不得偏离或冲突**。例如配置了"温暖自然的生活摄影"，分析就只能往暖色调、自然光、真实场景细化，**不得**生成维多利亚木刻/黑白版画等冲突风格。
+- **无配置值**（所有层级都未配置视觉）→ 执行完整三维分析兜底：图片视觉风格由账号定位、内容主题、目标受众三个维度独立确定，与 writer 选择无关。即使使用 dan-koe（犀利深刻写作风格）为养生账号写文章，图片也应使用温暖自然的视觉风格，而非维多利亚版画。
 
 三维风格分析详见 [references/cover.md](references/cover.md)。
 
@@ -32,10 +37,12 @@ description: Manages images for WeChat article (公众号图文) content includi
 
 ### 流程
 
-1. 从 `get_channel_profile` 结果中读取账号定位、关键词、受众信息
+1. 从 `get_channel_profile` 结果中读取任务已解析的视觉风格（**权威来源**）：`style`（解析后的视觉风格描述/关键词）、`style_source`（task / template / plan / channel）、`template_style`（任务带模板时）；同时读取账号定位、关键词、受众信息
 2. 读取文章内容（`$DIR/04-article-final.md`）提取主题和关键意象
-3. 执行三维风格分析（账号定位 + 内容主题 + 目标受众）→ 确定视觉风格、色彩基调、情绪氛围
-4. 从零构建封面 prompt（**不使用 writer YAML 的 cover_prompt**）
+3. **视觉风格确定（配置优先，分析兜底）**：
+   - 若 `style` 非空 → 以它为 `$VISUAL_STYLE` 的核心锚点，三维分析只做**补充细化**（配色、情绪、构图），**不得覆盖或偏离**配置的视觉方向
+   - 若 `style` 为空（所有层级都未配置视觉）→ 执行完整三维分析兜底（账号定位 + 内容主题 + 目标受众）→ 确定视觉风格、色彩基调、情绪氛围
+4. 从零构建封面 prompt（视觉方向取自任务解析的 `style` 字段——**不从 writer YAML 推视觉**，writer 仅决定文字风格，已不再携带任何视觉/封面字段）
 5. 构建 prompt 时（如 MCP 工具可用）可调用 `list_resources(category="image_presets")` 获取封面预设模板列表，再用 `get_resource(category="image_presets", name="cover-default")` 等获取具体预设模板，将 `{{ARTICLE_TITLE}}`、`{{ARTICLE_SUMMARY}}`、`{{VISUAL_STYLE}}`、`{{ASPECT_RATIO}}` 等变量替换为实际内容。如果工具不可用，直接从零构建 prompt
 6. 调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1", upload_to_cdn=true)` 生成——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`。**不再单独调用 `upload_image`**。
 7. 从 `generate_image` 返回值取 `media_id` + `wechat_url`。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(channel_id="$CHANNEL_ID", file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**。

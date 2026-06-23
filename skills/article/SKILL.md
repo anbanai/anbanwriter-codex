@@ -75,7 +75,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 ### 步骤 6：封面设计与配图规划
 
 使用 `article-visual-design` skill：
-- **6a: 三维风格分析** — 基于账号定位 + 内容主题 + 受众确定视觉风格（不使用 writer YAML 的 `cover_style`/`cover_prompt`）
+- **6a: 视觉风格确定（配置优先，分析兜底）** — 先读 `get_channel_profile` 返回的任务已解析视觉风格（`style` / `style_source` / `template_style`，权威锚点）；非空则以它为核心，三维分析（账号定位 + 内容主题 + 受众）只做补充细化；为空则三维分析兜底。视觉风格**不取自 writer YAML**（writer 仅决定文字风格，已不再携带 `cover_style`/`cover_prompt` 等视觉/封面字段）
 - **6b: 生成封面（生成与上传原子化）** — 从零构建封面 prompt，调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1", upload_to_cdn=true)`。**同一调用内完成生成→压缩→上传微信 CDN**，直接返回 `media_id` + `wechat_url`。**不再单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，无需重新生成
 - **6c: 创建配图规划** — 逐章分析文章，创建 `$DIR/image-plan.md`；每张图必须包含 `chapter_title`、`core_point`、`source_excerpt`、`visual_subject`、`composition_type`、`prompt_strategy`
 - 记录 `$VISUAL_STYLE`、`$COLOR_PALETTE`、`$COVER_PATH`、封面 `media_id`

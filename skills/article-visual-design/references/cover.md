@@ -1,8 +1,14 @@
 # 公众号封面图设计规范
 
-## 核心原则：账号驱动，非 Writer 驱动
+## 核心原则：配置优先，账号/内容细化，Writer 无关
 
-**Writer YAML 定义文字风格（语气、结构、修辞），不定义图片风格。** 封面图的视觉风格由账号定位、内容主题和目标受众三个维度独立决定。
+公众号视觉是三个**正交**维度之一（图片视觉 `style` / 写作风格 `writing_style` / 排版样式 `theme`），互不推导。**Writer YAML 仅定义文字风格，不携带任何视觉/封面字段**（曾经的 `cover_style`/`cover_prompt` 已移除）。
+
+视觉风格的**权威来源**是任务已解析的 `style` 字段（由 `get_channel_profile` 按 `task > template > plan > channel` 返回，通过 profile 的 `style` / `style_source` / `template_style` 字段暴露）：
+- **有配置值**（`style_source` 为 task/template/plan/channel 之一）→ 以它为视觉锚点，下面的三维分析只做**细化充实**（配色、情绪、构图），**不得偏离或冲突**。
+- **无配置值**（所有层级均为空）→ 完全由账号定位、内容主题、目标受众三维分析确定。
+
+这彻底切断了"writer key 泄漏为图片风格"的诱因链（曾经的 dan-koe → 维多利亚木刻 bug）：即使某频道写作风格是 dan-koe，只要视觉维度配置为温暖自然，配图就绝不可生成维多利亚版画。
 
 ---
 
@@ -53,7 +59,7 @@
 
 ## 封面 Prompt 模板
 
-根据三维分析结果，按以下模板从零构建封面 prompt（不使用 writer YAML 的 cover_prompt）：
+根据任务解析的视觉风格（`style` 字段，权威锚点）+ 三维分析细化结果，按以下模板从零构建封面 prompt（视觉方向取自任务 `style`，不从 writer YAML 推视觉——writer 已不再携带任何视觉/封面字段）：
 
 ```
 A 2.35:1 horizontal image for a WeChat article cover. {VISUAL_STYLE}.
