@@ -111,7 +111,7 @@ Lifecycle hooks for quality verification. **Plugin-bundled hooks are not trusted
 | MCP server list | `mcpServers` in frontmatter | `[mcp_servers.X]` table in TOML |
 | Tools allowlist | `tools:` frontmatter field | `sandbox_mode` field (read-only / workspace-write / danger-full-access) |
 | Model override | `model: inherit` | Omit `model` field to inherit parent session |
-| Max turns | `maxTurns: 50` | No direct equivalent — subagents run to completion or until the user cancels (optionally bounded by Codex's global `job_max_runtime_seconds`, which this plugin does not set) |
+| Max turns | `maxTurns: 300` | No direct equivalent — subagents run to completion or until the user cancels (optionally bounded by Codex's global `job_max_runtime_seconds`, which this plugin does not set) |
 
 ## Installation
 
