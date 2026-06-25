@@ -79,8 +79,5 @@ A: 修改 shell 中的 `export ANBAN_API_URL=...`，或修改 `~/.codex/config.t
 **Q: 已有 API Key 但忘了存在哪里？**
 A: 在终端执行 `echo $ANBAN_API_KEY`；若为空，检查 `~/.zshrc` / `~/.bashrc`，或 `~/.codex/config.toml` 的 `[mcp_servers.anban]` 段。
 
-**Q: 之前用的是 `ANBANWRITER_API_KEY`，现在 MCP 连不上了？**
-A: 变量名已升级：`ANBANWRITER_API_KEY` → `ANBAN_API_KEY`（`ANBANWRITER_API_URL` → `ANBAN_API_URL`、`ANBANWRITER_DEFAULT_PROJECT` → `ANBAN_DEFAULT_PROJECT` 同理）。把 shell 配置里的旧 `export` 改成新名，旧名已失效。
-
 **Q: 想同时使用多个 anbanwriter 服务（如生产 + 测试）？**
 A: 在 `~/.codex/config.toml` 注册第二个 MCP 服务器（例如 `[mcp_servers.anban-staging]`），用不同环境变量承载各自的 Bearer Token，再让 subagent 在 `[mcp_servers]` 段中按需引用。
