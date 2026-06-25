@@ -18,8 +18,8 @@ It connects to the same `anbanwriter` MCP server as `claudecode/` and `openclaw/
 
 The plugin follows Codex's **Skill + Subagent + MCP** model:
 
-- **Skills** (`skills/`) — auto-discovered by Codex (18 leaf skills, identical content to `claudecode/skills/`; plus 2 reference-only directories `video-composition/` and `writers/` with no `SKILL.md`)
-- **Subagents** (`agents/`) — five TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
+- **Skills** (`skills/`) — auto-discovered by Codex (23 leaf skills, identical content to `claudecode/skills/`; plus 1 reference-only directory `writers/` with no `SKILL.md`)
+- **Subagents** (`agents/`) — six TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
 - **MCP server** (`.mcp.json`) — HTTP endpoint at `${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp`
 - **Hooks** (`hooks/hooks.json`) — lifecycle events mirroring `claudecode/hooks/hooks.json`, with `TaskCompleted` replaced by `Stop` (Codex has no `TaskCompleted` event)
 
