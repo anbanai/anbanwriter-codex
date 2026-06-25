@@ -35,7 +35,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 **Codex-specific behavior**:
 - Subagents only spawn when the user **explicitly** asks ("use the wechatarticle subagent to ...", "delegate to X"). Codex does not auto-spawn subagents.
-- Each subagent declares its own `[mcp_servers.anbanwriter]` and `[[skills.config]]` — it does **not** inherit MCP servers or skills from the parent session.
+- Each subagent declares its own `[mcp_servers.anban]` and `[[skills.config]]` — it does **not** inherit MCP servers or skills from the parent session.
 - Multi-agent mode requires `[features] multi_agent = true` in `~/.codex/config.toml` (the install script adds this automatically).
 - `[agents] max_threads = 6` bounds concurrent subagent execution.
 
@@ -51,13 +51,13 @@ Key skill groups:
 - **Design**: `line-art-coloring`
 - **Short video**: `short-video-cover`, `portrait-pose-variants`
 - **Setup**: `setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
-- **Config**: `config` (channel-level runtime configuration: writer, theme, image provider, positioning)
+- **Config**: `config` (project-level runtime configuration: writer, theme, image provider, positioning)
 
 ### MCP Server (`.mcp.json`)
 
 Connects to the `anbanwriter` MCP server at `${ANBANWRITER_API_URL:-https://api.creator.anbanai.com}/mcp` with Bearer token auth via `${ANBANWRITER_API_KEY}`. Key MCP tools:
 
-- `list_channels`, `get_channel_profile`, `list_drafts`, `list_published_articles`, `list_channel_titles`
+- `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `prepare_workspace`, `archive_workspace`
 - `write_article`, `convert_markdown`, `humanize_article`, `optimize_seo`
 - `generate_image`, `upload_image`, `download_image`, `compress_image`, `analyze_image`
@@ -67,11 +67,11 @@ Connects to the `anbanwriter` MCP server at `${ANBANWRITER_API_URL:-https://api.
 
 ### Themes (Server-managed)
 
-Themes define visual styling for article排版. Themes are managed server-side via the MCP server's `convert_markdown` tool. Each channel has a configured theme applied automatically during Markdown-to-WeChat-HTML conversion.
+Themes define visual styling for article排版. Themes are managed server-side via the MCP server's `convert_markdown` tool. Each project has a configured theme applied automatically during Markdown-to-WeChat-HTML conversion.
 
 ### Writers (`skills/writers/`)
 
-YAML files defining **writing** styles (the writer dimension only). Each has `name`, `english_name`, `writing_prompt` (required), plus optional `core_beliefs`, `title_formulas`, `quote_templates`. Writers **do not** carry visual identity — image visual style is an orthogonal dimension configured per channel/template/plan/task (resolved at task creation as the `style` field; see `article-visual-design` skill). Built-in styles: `dan-koe`, `cultural-depth`, `casual-science`.
+YAML files defining **writing** styles (the writer dimension only). Each has `name`, `english_name`, `writing_prompt` (required), plus optional `core_beliefs`, `title_formulas`, `quote_templates`. Writers **do not** carry visual identity — image visual style is an orthogonal dimension configured per project/template/plan/task (resolved at task creation as the `style` field; see `article-visual-design` skill). Built-in styles: `dan-koe`, `cultural-depth`, `casual-science`.
 
 ### Hooks (`hooks/hooks.json`)
 

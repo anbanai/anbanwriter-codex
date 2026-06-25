@@ -8,7 +8,7 @@ Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit
 
 - **18 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, Seednote viral analysis, live video slicing, line-art coloring, short-video cover replication, portrait pose variants, SEO, and more.
 - **5 native Codex subagents**: end-to-end orchestrators (10,000+ word pipelines each) for the workflows above.
-- **MCP integration**: connects to the anbanwriter HTTP MCP server for channel management, image generation, WeChat publishing, TingWu transcription, and FFmpeg-driven clip assembly.
+- **MCP integration**: connects to the anbanwriter HTTP MCP server for project management, image generation, WeChat publishing, TingWu transcription, and FFmpeg-driven clip assembly.
 - **Lifecycle hooks**: `SubagentStop` (per-agent delivery summary) + `Stop` (generic QA gate).
 
 ## Prerequisites
@@ -50,7 +50,7 @@ Add to `~/.zshrc` (or `~/.bashrc`):
 export ANBANWRITER_API_KEY="<your-api-key-from-creator.anbanai.com>"
 # Optional overrides:
 # export ANBANWRITER_API_URL="https://api.creator.anbanai.com"  # default
-# export ANBANWRITER_DEFAULT_CHANNEL="<channel-id>"             # skip list_channels
+# export ANBANWRITER_DEFAULT_PROJECT="<project-id>"             # skip list_projects
 ```
 
 Then `source ~/.zshrc` (or restart your terminal).
@@ -79,7 +79,7 @@ Expected: 5 subagents listed (wechatarticle, seednote, designer, live-slicer, sh
 $setup
 ```
 
-Expected: the setup skill runs `list_channels` and returns your configured channels. If it fails, your `ANBANWRITER_API_KEY` is missing or invalid.
+Expected: the setup skill runs `list_projects` and returns your configured projects. If it fails, your `ANBANWRITER_API_KEY` is missing or invalid.
 
 ## Usage
 
@@ -141,9 +141,9 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 ### Subagent fails with "MCP tool not found"
 
 - `echo $ANBANWRITER_API_KEY` — should print your key.
-- Confirm `~/.codex/config.toml` has `[mcp_servers.anbanwriter]` (the install script does not add this; set it manually if you skipped plugin install):
+- Confirm `~/.codex/config.toml` has `[mcp_servers.anban]` (the install script does not add this; set it manually if you skipped plugin install):
   ```toml
-  [mcp_servers.anbanwriter]
+  [mcp_servers.anban]
   url = "${ANBANWRITER_API_URL:-https://api.creator.anbanai.com}/mcp"
   bearer_token_env_var = "ANBANWRITER_API_KEY"
   ```
