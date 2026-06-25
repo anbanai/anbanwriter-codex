@@ -1,178 +1,307 @@
 ---
 name: article-visual-design
-description: Manages images for WeChat article (公众号图文) content including cover generation (封面), content illustration (配图), compression, and CDN upload. Use when generating or processing images for WeChat articles. Also use when user mentions '封面', '配图', '插图', '视觉设计', '图片上传', 'generate cover', or when the article pipeline calls for image planning, generation, or uploading.
+description: Manages images for WeChat article (公众号图文) content including template selection, visual rhythm planning, cover generation (封面), content illustration (配图) with vision verification, compression, and CDN upload. Use when generating or processing images for WeChat articles. Use when user mentions '封面', '配图', '插图', '视觉设计', '图片上传', 'generate cover', 'visual rhythm', 'template', or when the article pipeline calls for image planning, generation, verification, or uploading.
 ---
 
-# 公众号图文图片管理
+# 公众号图文图片管理（模板化 + 视觉校验）
 
 ## MCP 工具
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `generate_image` (channel_id, prompt, image_type, output_path, task_id, ref_image_path, upload_to_cdn?) | 生成单张图片。`upload_to_cdn=true`（**生成与上传原子化**）时在同一调用内完成"生成→保存→压缩→上传微信 CDN"，直接返回 `wechat_url` + `media_id`；上传失败返回 `upload_error`（生成不浪费，仅重试上传）。返回 download_url（始终为可 HTTP fetch 的存储 URL，不再返回 base64 data URL）、file_path、wechat_url、media_id |
-| `upload_image` (channel_id, file_path) | 上传**外部/下载来的**图片到微信 CDN，返回 CDN URL。**已生成的图不再用此工具**——生成时直接用 `generate_image(upload_to_cdn=true)` 原子上传；仅当 `generate_image` 返回 `upload_error` 时作为重传兜底 |
+| `generate_image` (channel_id, prompt, image_type, output_path, task_id, ref_image_path, verify_with_vision?, verification_prompt?, upload_to_cdn?) | 生成单张图片。`upload_to_cdn=true`（**生成与上传原子化**）时在同一调用内完成"生成→保存→视觉校验→压缩→上传微信 CDN"，直接返回 `wechat_url` + `media_id`；校验未通过则**不上传**；上传失败返回 `upload_error`（生成不浪费，仅重试上传）。返回 download_url（始终为可 HTTP fetch 的存储 URL，不再返回 base64 data URL）、file_path、wechat_url、media_id、verification（可选） |
+| `analyze_image` (channel_id, image_url 或 file_path, prompt) | 用 vision 模型分析图片，用于人工二次校验或失败诊断 |
+| `upload_image` (channel_id, file_path) | 上传**外部/下载来的**图片到微信 CDN，返回 CDN URL。**已生成的图不再用此工具**——生成时直接用 `generate_image(upload_to_cdn=true)` 原子上传 |
 | `download_image` (channel_id, url) | 下载在线图片 |
 | `compress_image` (file_path) | 压缩图片 |
 
 ---
 
-## 核心原则：配置优先，账号/内容细化，Writer 无关
+## 五阶段流程
+
+```
+Phase 0: 模板选择 + 节奏规划
+  └─ 读取 03-article.md → 选模板 → 写 visual-rhythm-plan.md
+
+Phase 1: 三维风格分析
+  └─ 账号定位 + 内容主题 + 受众 → $VISUAL_STYLE / $COLOR_PALETTE / $MOOD
+
+Phase 2: 封面生成
+  └─ 基于风格分析 + 文章核心隐喻 → 生成 + 上传
+
+Phase 3: 配图规划
+  └─ 逐章节提取 visual_brief + required_entities + must_match_excerpts → 写 image-plan.md
+
+Phase 4: 配图生成（带 vision 校验）
+  └─ 按 rhythm-plan slot 顺序生成 → vision 校验 → 失败重试 → 写 images.json
+```
+
+---
+
+## Phase 0：模板选择与节奏规划
+
+### 步骤 0a：选择文章类型模板
+
+读取 `$DIR/03-article.md`（或 `04-article-final.md`），根据结构特征匹配模板：
+
+| 特征 | 模板 | 文件 |
+|------|------|------|
+| 标题/大纲含"3 个/5 种/N 条"+ 并列项 | `listicle` | `__PLUGIN_ROOT__/templates/article/listicle.yaml` |
+| 按步骤序号组织（步骤 1 / 步骤 2 / step N） | `tutorial` | `__PLUGIN_ROOT__/templates/article/tutorial.yaml` |
+| 情节弧、场景描写、人物/时间线 | `story-narrative` | `__PLUGIN_ROOT__/templates/article/story-narrative.yaml` |
+| 其他（深度观点、评论、分析） | `long-form-essay` | `__PLUGIN_ROOT__/templates/article/long-form-essay.yaml`（默认） |
+
+**自动决策原则**：不向用户询问。特征模糊时优先选 `long-form-essay`。
+
+### 步骤 0b：创建 visual-rhythm-plan.md
+
+读取 `$DIR/03-article.md`，对每个 `##` 章节，分配一个 slot。详细模板和示例见 [references/rhythm.md](references/rhythm.md)。
+
+每个 slot 必须包含：
+- `slot_id`：hero / section_opener / inline_detail / footer
+- `section_index`：对应 `##` 章节的 0-based 序号（footer 用 -1）
+- `image_size`：full-bleed / full-width / inline
+- `module`：从模板的 `modules.preferred` 中选，可为 null
+- `composition_type`：从 8 种构图类型中选（参见 references/content.md）
+- `chapter_anchor`：对应章节的标题或核心论点（1 句话）
+
+**产出**：`$DIR/visual-rhythm-plan.md`
+
+---
+
+## Phase 1：视觉风格确定（配置优先，分析兜底）
+
+### 步骤 1a：读取任务已解析的视觉风格（权威来源）
 
 公众号"模板"由三个**正交**维度组成：图片视觉（`style`）、写作风格（`writing_style`）、排版样式（`theme`）。三者各自独立解析，互不推导——**写作风格绝不决定图片视觉**。
 
-**Writer YAML 仅定义文字风格，不携带任何视觉/封面字段**（曾经的 `cover_style`/`cover_prompt` 已移除）。
+`get_channel_profile` 已按 `task > template > plan > channel` 解析并返回视觉维度的最终值：
+- `$VISUAL_STYLE_CONFIGURED` = profile 的 `style` 字段（解析后的视觉风格描述/关键词）
+- `$TEMPLATE_VISUAL_STYLE` = profile 的 `template_style` 字段（任务带模板时）
+- `$VISUAL_STYLE_SOURCE` = profile 的 `style_source`（task / template / plan / channel）
 
-视觉风格的**权威来源**是任务已解析的 `style` 字段（由 `get_channel_profile` 按 `task > template > plan > channel` 解析，并通过 profile 的 `style` / `style_source` / `template_style` 字段返回）：
+**关键规则**：
+- 若 `$VISUAL_STYLE_CONFIGURED` 非空 → 它是**权威视觉锚点**。以它为 `$VISUAL_STYLE` 的核心，三维分析只做**补充细化**（配色、情绪、构图），**绝不可覆盖或偏离**配置的视觉方向。例如配置了"温暖自然的生活摄影"，分析就只能往暖色调、自然光、真实场景细化，**不得**生成维多利亚木刻/黑白版画等冲突风格。
+- 若 `$VISUAL_STYLE_CONFIGURED` 为空（所有层级都未配置视觉）→ 执行完整三维分析兜底。
 
-- **有配置值**（`style_source` 为 task/template/plan/channel 之一）→ 以它为**权威视觉锚点**。下面的三维分析只做**细化充实**（配色、情绪、构图），**不得偏离或冲突**。例如配置了"温暖自然的生活摄影"，分析就只能往暖色调、自然光、真实场景细化，**不得**生成维多利亚木刻/黑白版画等冲突风格。
-- **无配置值**（所有层级都未配置视觉）→ 执行完整三维分析兜底：图片视觉风格由账号定位、内容主题、目标受众三个维度独立确定，与 writer 选择无关。即使使用 dan-koe（犀利深刻写作风格）为养生账号写文章，图片也应使用温暖自然的视觉风格，而非维多利亚版画。
+### 步骤 1b：三维风格分析（细化 / 兜底）
 
-三维风格分析详见 [references/cover.md](references/cover.md)。
+基于 `get_channel_profile` 返回的 `$ACCOUNT_POSITIONING` / `$ACCOUNT_KEYWORDS` / `$ACCOUNT_AUDIENCE` 和 `$DIR/04-article-final.md` 内容，执行三维分析。当步骤 1a 有配置锚点时，分析必须向该锚点收敛（即用账号/内容主题来**充实**已指定的视觉方向），而非另起炉灶。
 
----
+详细规范见 [references/cover.md](references/cover.md)。
 
-## 封面图生成
-
-封面设计规范详见 [references/cover.md](references/cover.md)。
-
-### 流程
-
-1. 从 `get_channel_profile` 结果中读取任务已解析的视觉风格（**权威来源**）：`style`（解析后的视觉风格描述/关键词）、`style_source`（task / template / plan / channel）、`template_style`（任务带模板时）；同时读取账号定位、关键词、受众信息
-2. 读取文章内容（`$DIR/04-article-final.md`）提取主题和关键意象
-3. **视觉风格确定（配置优先，分析兜底）**：
-   - 若 `style` 非空 → 以它为 `$VISUAL_STYLE` 的核心锚点，三维分析只做**补充细化**（配色、情绪、构图），**不得覆盖或偏离**配置的视觉方向
-   - 若 `style` 为空（所有层级都未配置视觉）→ 执行完整三维分析兜底（账号定位 + 内容主题 + 目标受众）→ 确定视觉风格、色彩基调、情绪氛围
-4. 从零构建封面 prompt（视觉方向取自任务解析的 `style` 字段——**不从 writer YAML 推视觉**，writer 仅决定文字风格，已不再携带任何视觉/封面字段）
-5. 构建 prompt 时（如 MCP 工具可用）可调用 `list_resources(category="image_presets")` 获取封面预设模板列表，再用 `get_resource(category="image_presets", name="cover-default")` 等获取具体预设模板，将 `{{ARTICLE_TITLE}}`、`{{ARTICLE_SUMMARY}}`、`{{VISUAL_STYLE}}`、`{{ASPECT_RATIO}}` 等变量替换为实际内容。如果工具不可用，直接从零构建 prompt
-6. 调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1", upload_to_cdn=true)` 生成——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`。**不再单独调用 `upload_image`**。
-7. 从 `generate_image` 返回值取 `media_id` + `wechat_url`。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(channel_id="$CHANNEL_ID", file_path="$DIR/cover.png")` 单独重传即可，**无需重新生成**。
-
-### 产出
-
-- `$DIR/cover.png` — 封面图文件
-- `media_id` — 微信素材 ID
-- `$VISUAL_STYLE` — 三维分析确定的视觉风格描述
-- `$COLOR_PALETTE` — 色彩基调
-- `$COVER_PATH` — 封面图路径（供配图参考链使用）
+**产出**：`$VISUAL_STYLE`（含配置锚点 + 细化方向）/ `$COLOR_PALETTE` / `$MOOD` / `$VISUAL_STYLE_SOURCE`
 
 ---
 
-## 图片内容规划
+## Phase 2：封面生成
 
-在生成任何内容配图之前，必须先创建 `image-plan.md`，为每张配图规划具体内容和视觉方向。这是确保配图与文章内容关联性的核心环节。
+基于 Phase 1 的风格分析（配置锚点优先）和文章核心隐喻，从零构建封面 prompt。视觉方向取自任务解析的 `style` 字段——**不从 writer YAML 推视觉**（writer 仅决定文字风格，已不再携带任何视觉/封面字段）。
 
-设计规范详见 [references/content.md](references/content.md)。
+流程：
+1. 从 `$DIR/04-article-final.md` 提取核心论点和最强视觉隐喻
+2. 按 [references/cover.md](references/cover.md) 的模板构建 prompt
+3. 调用 `generate_image`（`channel_id=$CHANNEL_ID`, `prompt=封面提示词`, `image_type="cover"`, `output_path="$DIR/cover.png"`, `task_id=$TASK_ID`, `size="2.35:1"`, **`upload_to_cdn=true`**, `verify_with_vision=true`, `verification_prompt=<步骤 4 构建的校验 prompt>`）——**生成与上传原子化**：同一调用内完成生成→保存→校验→压缩→上传，直接返回 `media_id`（封面 thumb）+ `wechat_url`。
+4. **Vision 校验 prompt 模板**：
+   ```
+   这张图用于文章《$ARTICLE_TITLE》的封面。
+   文章核心论点：$CORE_THESIS
+   必须出现的视觉元素：$COVER_REQUIRED_ENTITIES（列表）
+   请回答：
+   1. 是否包含上述所有元素？缺哪个？
+   2. 与文章主题的语义相关度（high/medium/low）
+   3. 是否有不应出现的元素（文字水印、播放标记、低俗内容）？
+   ```
+   校验未通过时 `upload_to_cdn` **不会上传**（不浪费微信素材位）。
+5. 校验失败时重试一次（更换 prompt 措辞，**仍带 `upload_to_cdn=true`**），仍失败则请求用户协助
+6. 从 `generate_image` 返回值取 `media_id`（用于发布草稿的 thumb）+ `wechat_url`。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重试上传即可，**无需重新生成**
 
-### 规划流程
-
-#### 步骤 1：提取章节内容
-
-读取 `$DIR/04-article-final.md`，对每个 `##` 章节提取：
-
-- **核心论点**：该章节要传达的关键信息（1 句话）
-- **情感基调**：理性分析、温暖鼓励、犀利批判、诗意沉思、轻松幽默等
-- **具体素材**：章节中使用的案例、比喻、场景描述、引用等
-- **原文摘录**：可直接支撑配图 prompt 的章节原句或短段（写入 `source_excerpt`）
-
-#### 步骤 2：分配构图类型
-
-从 8 种构图类型中为每章配图选择不同类型（参见 [references/content.md](references/content.md)）：
-- 中心聚焦、对角线流动、三分法、前景/背景、俯拍、特写、留白主导、重复图案
-- 3 张以上配图时，必须使用 3 种以上不同构图
-
-#### 步骤 3：写入 image-plan.md
-
-按模板写入 `$DIR/image-plan.md`，包含总体策略和每章配图的详细规划。每张图必须包含 `chapter_title`、`core_point`、`source_excerpt`、`visual_subject`、`composition_type`、`prompt_strategy`。
-
-### 产出
-
-- `$DIR/image-plan.md` — 配图内容规划文档
+**产出**：`$DIR/cover.png`, `media_id`, `$COVER_PATH`
 
 ---
 
-## 内容配图设计与生成
+## Phase 3：配图内容规划（升级 schema）
 
-设计规范详见 [references/content.md](references/content.md)。
+### 新 schema：visual_brief + required_entities + must_match_excerpts
 
-### 参考链
+旧 schema 的 `visual_subject` 字段过于抽象（"商务场景"、"科技背景"），已废弃。新 schema 强制要求三个具体字段：
 
-**所有内容配图使用封面图作为参考锚点**：
+| 字段 | 含义 | 示例 |
+|------|------|------|
+| `visual_brief` | 1-2 句白话描述"这张图必须画什么" | "一颗石头路上的裂缝中钻出嫩绿新芽，背景是虚化的晨光。" |
+| `required_entities` | 必须出现的具体物体列表 | `["stone path with crack", "tender green shoots", "soft morning light (background blur)"]` |
+| `must_match_excerpts` | 章节中支撑这些实体的原句 | `["他说，'你看这条石板路的缝里，不也长出了新芽？'"]` |
+
+详细正反例和规划流程见 [references/content.md](references/content.md)。
+
+**产出**：`$DIR/image-plan.md`
+
+---
+
+## Phase 4：配图生成（带 vision 校验循环）
+
+按 `$DIR/visual-rhythm-plan.md` 中 slot 的顺序生成。每个 slot 执行：
+
+### 步骤 4a：构建 prompt
+
+基于 image-plan.md 中对应章节的：
+- `visual_brief`（主体描述）
+- `required_entities`（必须出现的实体清单）
+- `composition_type`（构图约束）
+- 叠加 `$VISUAL_STYLE` / `$COLOR_PALETTE` 风格语言
+
+### 步骤 4b：构建 vision 校验 prompt
+
+按下方模板构建 `verification_prompt`（**必须在 4c 调用 generate_image 前就绪**，服务端要求 `verify_with_vision=true` 时 `verification_prompt` 非空）：
 
 ```
-所有内容配图：ref_image_path="$DIR/cover.png"（始终用封面，不用上一张）
+这张图用于文章《$ARTICLE_TITLE》的章节《$CHAPTER_TITLE》。
+章节核心论点：$CORE_POINT
+必须出现的视觉元素：$REQUIRED_ENTITIES（逐项列出）
+视觉简报：$VISUAL_BRIEF
+请按 JSON 格式回答：
+{
+  "all_entities_present": true/false,
+  "missing_entities": ["缺的实体 1", ...],
+  "relevance_score": "high" | "medium" | "low",
+  "has_forbidden_content": true/false,
+  "forbidden_notes": "文字/水印/低俗等问题描述",
+  "overall_pass": true/false,
+  "sharper_prompt_hint": "如不通过，给出更锐化的 prompt 建议"
+}
 ```
 
-为什么始终用封面：使用上一张会导致风格漂移（每张图的微小差异累积放大），封面是风格锚点。
+### 步骤 4c：生成图片（带 vision 校验 + 原子上传）
 
-### 生成流程
+```
+generate_image(
+  channel_id=$CHANNEL_ID,
+  prompt=<步骤 4a 构建的 prompt>,
+  image_type="content",
+  output_path="$DIR/img_N.png",
+  task_id=$TASK_ID,
+  ref_image_path="$DIR/cover.png",
+  verify_with_vision=true,
+  verification_prompt=<步骤 4b 构建的校验 prompt>,
+  upload_to_cdn=true
+)
+```
 
-对 `image-plan.md` 中每个章节配图执行：
+**关键**：
+- `ref_image_path` 始终用 `$DIR/cover.png`（风格锚点）。
+- `upload_to_cdn=true` 让**生成与上传原子化**：同一调用内完成生成→保存→校验→压缩→上传微信 CDN。校验通过才上传（不浪费素材位），返回值直接带 `wechat_url` + `media_id`；校验失败则不上传，结果无 `wechat_url`。**不再有独立的 `upload_image` 阶段**——每张图生成的瞬间即持久化到 CDN。
 
-1. 根据 image-plan 中的分析构建 prompt（必须包含章节具体概念、比喻或案例）
-2. 调用 `generate_image`（`channel_id="$CHANNEL_ID"`, `prompt=章节提示词`, `image_type="content"`, `output_path="$DIR/img_N.png"`, `task_id="$TASK_ID"`, `ref_image_path="$DIR/cover.png"`, **`upload_to_cdn=true`**）——**生成与上传原子化**：同一调用内完成生成→保存→压缩→上传微信 CDN，返回值直接带 `wechat_url` + `media_id`。**不再有独立的 `upload_image` 阶段**。
-3. 从 `generate_image` 返回值取 `wechat_url` → 作为该图的 CDN URL。若返回 `upload_error`（生成成功但上传失败），记到记录的 `upload_error` 字段并用 `upload_image(file_path="$DIR/img_N.png")` 单独重传（**不重新生成**）。
-4. **每张图返回后立即原子写 `$DIR/images.json`**：先写临时文件 `$DIR/.images.json.tmp` → `fsync` → `rename` 覆盖 `$DIR/images.json`。**绝不要"攒齐所有图再一次性写"**——那是丢失窗口；逐张落盘使中断最多丢失"正在生成的那一张"，已上 CDN 的全部安全。每条记录在原有审计字段基础上增加 `wechat_url` 和 `media_id`。
-5. 将 `![描述](CDN_URL)` 插入到章节关键段落之后（不紧跟 `##` 标题，不在章节末尾）
+**旧版 server 兼容**：若 server 不支持 `verify_with_vision` / `upload_to_cdn` 参数，去掉这两个参数生成图后，单独调用 `analyze_image` 做校验 + `upload_image` 上传，并按 `references/content.md` 的容错解析规则处理返回文本：
 
-### Prompt 要求
+```
+analyze_image(
+  channel_id=$CHANNEL_ID,
+  file_path=$DIR/img_N.png,
+  prompt=<步骤 4b 构建的校验 prompt>
+)
+```
 
-- 必须包含章节中的具体概念、比喻或案例作为视觉主体
-- 必须引用 `image-plan.md` 的 `source_excerpt` 或等价章节原文信息
-- 避免抽象通用描述（如"商务场景"、"科技背景"）
-- 不同章节的 prompt 必须有明显区别
-- 视觉风格和色彩与封面一致
+### 步骤 4d：失败重试策略
+
+读取 `generate_image` 返回的 `verification` 对象（**字段名是服务端归一化后的 `passed`/`score`/`missing_entities`/`notes`，不是 LLM 原始 JSON 的 `overall_pass`/`relevance_score`**）：
+- `passed=true` → 通过，继续下一步
+- `passed=false` 且 `score=medium` → 用 `notes` 中的 `sharper_prompt_hint` 锐化 prompt 重试（最多 2 次，共 3 次尝试）
+- `passed=false` 且 `score=low` → 同上重试
+- 3 次仍失败 → 标记 `quality_status=failed`，继续后续 slot
+
+**锐化 prompt 策略**：
+- 在 prompt 开头加 "MUST CONTAIN: " + `verification.missing_entities` 列表
+- 把 visual_brief 改写得更具体（加入材质、颜色、方位）
+- 移除任何抽象风格词，只保留具体场景描述
+
+### 步骤 4e：记录并立即原子落盘（生成即持久化）
+
+`generate_image(upload_to_cdn=true)` 返回时，**`wechat_url` + `media_id` 已就绪**（或返回 `upload_error`）。**无需调用 `upload_image`**。立即把这张图记录写回 `$DIR/images.json`——**每张图返回即落盘**，使中断最多丢失"正在生成的那一张"。
+
+- 从 `generate_image` 返回值取 `wechat_url` → 写入记录的 `url` 字段；`upload_error` 时记到 `upload_error` 字段并用 `upload_image(file_path=...)` 单独重试上传（**不重新生成**）。
+- **原子写** `$DIR/images.json`：先写临时文件 `$DIR/.images.json.tmp` → `fsync` → `rename` 覆盖 `$DIR/images.json`。绝不要"攒齐所有图再一次性写"——那是丢失窗口。
+- 每条记录必须包含：
+  ```json
+  {
+    "index": 1,
+    "slot_id": "section_opener",
+    "section_index": 1,
+    "image_type": "content",
+    "chapter_title": "...",
+    "composition_type": "三分法",
+    "visual_brief": "...",
+    "required_entities": ["..."],
+    "must_match_excerpts": ["..."],
+    "prompt": "Final prompt used",
+    "verification": {
+      "passed": true,
+      "score": "high",
+      "missing_entities": [],
+      "notes": "",
+      "raw": "<vision 模型原始输出>"
+    },
+    "verification_audit": {
+      "attempt_count": 1,
+      "sharper_prompt_history": []
+    },
+    "ref_image_path": "$DIR/cover.png",
+    "file_path": "$DIR/img_01.png",
+    "url": "https://cdn.../img_01.png",
+    "wechat_url": "https://cdn.../img_01.png",
+    "media_id": "媒体素材ID（来自 generate_image upload_to_cdn=true）",
+    "quality_status": "passed"
+  }
+  ```
+  `verification` 必须直接来自服务端 `generate_image(verify_with_vision=true)` 返回值的 `verification` 字段；`verification_audit` 由 agent 维护。
+
+### 步骤 4f：插入到文章
+
+按 `slot_id` 和 `section_index` 把 `![描述](CDN_URL)` 插入到 `$DIR/04-article-final.md`：
+- `section_opener`：紧跟 `## 章节标题` 之后
+- `inline_detail`：在 `after_paragraph_index` 指定的段落之后
+- `hero`：紧跟文章第一个 `##` 之前（如有 hero module 文字，则在 hero module 之后）
 
 ---
 
 ## 质量验证
 
-生成完成后执行 5 项检查：
+生成完成后执行 7 项检查：
 
+- [ ] **节奏完整性**：`visual-rhythm-plan.md` 中每个 `##` 都映射到一个 slot
+- [ ] **模板一致性**：所选模板的 rhythm 规则被遵守（如 listicle 的 section_opener 必填、inline_detail forbidden）
 - [ ] **文件完整性**：所有图片文件存在且可访问
-- [ ] **风格一致性**：读取 `$DIR/images.json`，确认所有内容配图记录 `ref_image_path="$DIR/cover.png"`
-- [ ] **视觉多样性**：读取 `$DIR/image-plan.md` 与 `$DIR/images.json`，确认 3 张以上配图使用 3 种以上不同 `composition_type`
-- [ ] **内容关联性**：逐项对照 `image-plan.md`，确认每个 prompt 引用了 `source_excerpt` 或章节具体内容（非通用描述）
-- [ ] **审计完整性**：每条图片记录必须包含 `chapter_title`、`composition_type`、`visual_subject`、`prompt_source_excerpt`、`ref_image_path`、`image_type`、`quality_status`、`wechat_url`、`media_id`
+- [ ] **风格一致性**：`images.json` 中所有内容图 `ref_image_path="$DIR/cover.png"`
+- [ ] **视觉多样性**：3 张以上配图使用 3 种以上不同 `composition_type`（清单模板可豁免，因要求统一构图）
+- [ ] **Vision 校验通过率**：至少 80% 的内容图 `verification.passed=true`
+- [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / `verification` / `slot_id` / `section_index` / `wechat_url` / `media_id`
+- [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（每张图生成即上 CDN）；缺 URL 的 slot 用 `generate_image(upload_to_cdn=true)` 补或 `upload_image` 重传
 
-未通过检查时：重试对应配图（更换 prompt 措辞），仍失败则记录问题继续后续章节。
+未通过检查时：
+- 单图失败 → 重试或降级标记
+- 节奏/模板违规 → 回到 Phase 0 重新规划
+- Vision 通过率 < 80% → 检查 prompt 构建逻辑，必要时回退到 Phase 3 重新规划
 
 ---
 
 ## 保存结果
 
-- 将含 CDN 图片链接的文章覆盖写回 `$DIR/04-article-final.md`
-- 将所有配图信息保存为 `$DIR/images.json`（含 index, image_type, chapter_title, composition_type, visual_subject, prompt, prompt_source_excerpt, ref_image_path, file_path, url, wechat_url, media_id, quality_status）
+- 含 CDN 图片链接的文章覆盖写回 `$DIR/04-article-final.md`
+- 所有配图信息保存为 `$DIR/images.json`
 
 ---
 
 ## 技术规范
 
 **微信图片限制**：
-- 最大尺寸：10MB（超出会被自动压缩）
+- 最大尺寸：10MB（超出自动压缩）
 - 最大宽度：1920px（保持比例压缩）
 - 支持格式：JPG、PNG、GIF、WebP
 
 **公众号常用比例**：
-- 正文配图：16:9 或 4:3 横版
 - 封面图（公众号封面）：2.35:1（900x383px 标准）
-- 正方形配图：1:1
-
----
-
-## 构图类型选择指南
-
-根据章节内容主题推荐构图类型：
-
-| 章节主题 | 推荐构图 | 原因 |
-|----------|----------|------|
-| 开篇引入 / 总述 | 中心聚焦 | 建立视觉焦点，统领全文 |
-| 过程 / 变化 / 方法 | 对角线流动 | 表达动态感和方向性 |
-| 平衡分析 / 多角度 | 三分法 | 自然和谐，适合并列观点 |
-| 层次 / 上下文 / 环境 | 前景/背景 | 表达深度和空间关系 |
-| 细节 / 数据 / 质感 | 特写 | 强调微观细节和真实感 |
-| 沉思 / 哲理 / 极简 | 留白主导 | 营造意境和呼吸感 |
-| 节奏 / 规律 / 重复 | 重复图案 | 表达秩序感和韵律感 |
-| 总览 / 全貌 / 结构 | 俯拍 | 展现整体结构和关系 |
+- 正文配图（section_opener）：16:9 横版
+- 章节内细节图（inline_detail）：4:3 或 1:1
+- Hero slot：full-bleed 2.35:1
 
 ---
 
@@ -180,7 +309,17 @@ description: Manages images for WeChat article (公众号图文) content includi
 
 | 问题 | 原因 | 修复 |
 |------|------|------|
-| 配图与内容无关 | prompt 使用抽象通用描述 | 从章节中提取具体概念/比喻/案例作为视觉主体 |
-| 风格不一致 | 未使用封面作为参考图 | 确保所有内容图传入 `ref_image_path="$DIR/cover.png"` |
-| 所有配图构图雷同 | 未在 image-plan 中分配不同构图 | 3+ 张图时强制使用 3+ 种构图类型 |
-| 封面与文章主题脱节 | 封面 prompt 缺少内容主题关联 | 在封面 prompt 中包含文章的视觉隐喻 |
+| Vision 校验持续失败 | prompt 过于抽象 | 锐化 visual_brief，明确每个 required_entity 的材质、颜色、方位 |
+| 配图与章节无关 | required_entities 与章节原文脱节 | 回到 Phase 3 重新提取，确保 must_match_excerpts 是章节原句 |
+| 所有配图构图雷同 | 未在 rhythm-plan 中分配不同 composition_type | 重新规划 rhythm-plan，强制 3+ 种构图（清单模板除外） |
+| 风格漂移 | 未使用封面作为参考图 | 确保所有内容图 `ref_image_path="$DIR/cover.png"` |
+| 封面与文章脱节 | 封面 prompt 缺少内容隐喻 | 在封面 prompt 中加入文章核心论点的视觉隐喻 |
+| 节奏违反模板规则 | 未读模板 YAML 的 rhythm 字段 | 重新加载模板，按 rhythm 字段约束 slot 分配 |
+
+---
+
+## 参考文档
+
+- [references/cover.md](references/cover.md) — 封面设计规范（三维风格分析 + prompt 模板）
+- [references/content.md](references/content.md) — 配图规划与生成（新 schema + vision 校验循环）
+- [references/rhythm.md](references/rhythm.md) — 节奏规划与模板选择（visual-rhythm-plan.md 模板）

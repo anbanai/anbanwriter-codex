@@ -76,7 +76,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 
 使用 `article-visual-design` skill：
 - **6a: 视觉风格确定（配置优先，分析兜底）** — 先读 `get_channel_profile` 返回的任务已解析视觉风格（`style` / `style_source` / `template_style`，权威锚点）；非空则以它为核心，三维分析（账号定位 + 内容主题 + 受众）只做补充细化；为空则三维分析兜底。视觉风格**不取自 writer YAML**（writer 仅决定文字风格，已不再携带 `cover_style`/`cover_prompt` 等视觉/封面字段）
-- **6b: 生成封面（生成与上传原子化）** — 从零构建封面 prompt，调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1", upload_to_cdn=true)`。**同一调用内完成生成→压缩→上传微信 CDN**，直接返回 `media_id` + `wechat_url`。**不再单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，无需重新生成
+- **6b: 生成封面（生成与上传原子化）** — 从零构建封面 prompt，调用 `generate_image(channel_id="$CHANNEL_ID", prompt=封面提示词, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="2.35:1", upload_to_cdn=true, verify_with_vision=true, verification_prompt=...)`。**同一调用内完成生成→校验→压缩→上传微信 CDN**，直接返回 `media_id`（发布草稿的 thumb）+ `wechat_url`。**不再单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，无需重新生成
 - **6c: 创建配图规划** — 逐章分析文章，创建 `$DIR/image-plan.md`；每张图必须包含 `chapter_title`、`core_point`、`source_excerpt`、`visual_subject`、`composition_type`、`prompt_strategy`
 - 记录 `$VISUAL_STYLE`、`$COLOR_PALETTE`、`$COVER_PATH`、封面 `media_id`
 
@@ -84,7 +84,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 
 使用 `article-visual-design` skill：
 
-- **7a: 生成内容配图（生成与上传原子化）** — 按 `$DIR/image-plan.md` 逐章生成，所有配图使用 `ref_image_path="$DIR/cover.png"` 保持风格一致。每次 `generate_image` 都带 `upload_to_cdn=true`，返回值直接含 `wechat_url`/`media_id`；**不再有独立的批量 `upload_image` 阶段**。**每张图返回后立即原子写 `images.json`**（临时文件 + rename），再处理下一张——使中断最多丢失"正在生成的那一张"，已上 CDN 的全部安全
+- **7a: 生成内容配图（生成与上传原子化）** — 按 `$DIR/image-plan.md` 逐章生成，所有配图使用 `ref_image_path="$DIR/cover.png"` 保持风格一致。每次 `generate_image` 都带 `upload_to_cdn=true, verify_with_vision=true`，返回值直接含 `wechat_url`/`media_id`；**不再有独立的批量 `upload_image` 阶段**。**每张图返回后立即原子写 `images.json`**（临时文件 + rename），再处理下一张——使中断最多丢失"正在生成的那一张"，已上 CDN 的全部安全。**每张正文图的 `wechat_url` 必须独立**——不得复用封面 `$COVER_CDN_URL`，不得多张正文图共用同一 URL（服务端 `publish_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿）
 - **7b: 质量验证** — 对照 `image-plan.md` 和 `images.json` 检查文件完整性、风格一致性、视觉多样性、内容关联性、审计字段完整性
 - **7c: 保存结果** — 覆盖写回 `$DIR/04-article-final.md`，保存 `$DIR/images.json`；每条记录包含 `chapter_title`、`composition_type`、`visual_subject`、`prompt_source_excerpt`、`ref_image_path`、`image_type`、`quality_status`、`wechat_url`、`media_id`
 

@@ -58,8 +58,8 @@ description: Creates and manages WeChat news article drafts (图文草稿) with 
 
 ## 完整发布工作流
 
-1. 调用 `convert_markdown` 将 Markdown 转为 WeChat HTML
-2. 调用 `generate_image`（带 `upload_to_cdn=true`）生成封面图——**生成与上传原子化**，同一调用内完成生成→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`（无需单独 `upload_image`）。**流水线场景**：步骤 6b 已取得封面 `media_id`，直接复用即可，跳过本步
+1. 调用 `render_template`（带 `layout_plan`）将 Markdown + 节奏计划确定性渲染为 WeChat HTML（替代旧的 `convert_markdown`）
+2. 调用 `generate_image`（带 `verify_with_vision=true, upload_to_cdn=true`）生成封面图——**生成与上传原子化**，同一调用内完成生成→校验→压缩→上传微信 CDN，直接返回 `media_id` + `wechat_url`（无需单独 `upload_image`）。**流水线场景**：步骤 6d 已取得封面 `media_id`，直接复用即可，跳过本步
 3. （仅当上一步返回 `upload_error` 时）调用 `upload_image(file_path="$DIR/cover.png")` 单独重传获取 `media_id`，不重新生成
 4. 调用 `publish_draft` 创建草稿
 
@@ -69,9 +69,11 @@ description: Creates and manages WeChat news article drafts (图文草稿) with 
 
 | 前置产出 | 来源 | 用途 |
 |----------|------|------|
-| `$DIR/05-article.html` | content-writing skill | 作为 articles[0].content |
-| `$DIR/cover.png` 的 `media_id` | article-visual-design skill | 作为 articles[0].thumb_media_id |
+| `$DIR/05-article.html` | content-writing skill（通过 `render_template` 生成） | 作为 articles[0].content |
+| `$DIR/cover.png` 的 `media_id` | article-visual-design skill（已通过 vision 校验） | 作为 articles[0].thumb_media_id |
 | `$DIR/seo-result.md` | seo-optimization skill | 提取优化后的标题和摘要 |
+| `$DIR/visual-rhythm-plan.md` | article-visual-design skill | 渲染审计参考（HTML 应已按 plan 渲染） |
+| `$DIR/images.json` | article-visual-design skill | 视觉审计参考（含 vision 校验记录） |
 
 ## 发布前验证
 
