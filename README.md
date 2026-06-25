@@ -47,10 +47,10 @@ The script is idempotent and does three things:
 Add to `~/.zshrc` (or `~/.bashrc`):
 
 ```sh
-export ANBANWRITER_API_KEY="<your-api-key-from-creator.anbanai.com>"
+export ANBAN_API_KEY="<your-api-key-from-creator.anbanai.com>"
 # Optional overrides:
-# export ANBANWRITER_API_URL="https://api.creator.anbanai.com"  # default
-# export ANBANWRITER_DEFAULT_PROJECT="<project-id>"             # skip list_projects
+# export ANBAN_API_URL="https://api.creator.anbanai.com"  # default
+# export ANBAN_DEFAULT_PROJECT="<project-id>"             # skip list_projects
 ```
 
 Then `source ~/.zshrc` (or restart your terminal).
@@ -79,7 +79,7 @@ Expected: 5 subagents listed (wechatarticle, seednote, designer, live-slicer, sh
 $setup
 ```
 
-Expected: the setup skill runs `list_projects` and returns your configured projects. If it fails, your `ANBANWRITER_API_KEY` is missing or invalid.
+Expected: the setup skill runs `list_projects` and returns your configured projects. If it fails, your `ANBAN_API_KEY` is missing or invalid.
 
 ## Usage
 
@@ -140,20 +140,20 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 
 ### Subagent fails with "MCP tool not found"
 
-- `echo $ANBANWRITER_API_KEY` — should print your key.
+- `echo $ANBAN_API_KEY` — should print your key.
 - Confirm `~/.codex/config.toml` has `[mcp_servers.anban]` (the install script does not add this; set it manually if you skipped plugin install):
   ```toml
   [mcp_servers.anban]
-  url = "${ANBANWRITER_API_URL:-https://api.creator.anbanai.com}/mcp"
-  bearer_token_env_var = "ANBANWRITER_API_KEY"
+  url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
+  bearer_token_env_var = "ANBAN_API_KEY"
   ```
 
 ### Skill paths in subagent TOMLs are wrong
 
-The install script substitutes `__PLUGIN_ROOT__` based on `~/.codex/plugins/cache/...`. If you installed the plugin to a non-default location, set `ANBANWRITER_PLUGIN_ROOT` and re-run:
+The install script substitutes `__PLUGIN_ROOT__` based on `~/.codex/plugins/cache/...`. If you installed the plugin to a non-default location, set `ANBAN_PLUGIN_ROOT` and re-run:
 
 ```bash
-ANBANWRITER_PLUGIN_ROOT=/custom/path bash codex/install/install-subagents.sh
+ANBAN_PLUGIN_ROOT=/custom/path bash codex/install/install-subagents.sh
 ```
 
 ### Hooks don't fire

@@ -13,7 +13,7 @@
 #   bash install-subagents.sh                         # from inside codex/install/
 #
 # Environment overrides:
-#   ANBANWRITER_PLUGIN_ROOT  Override plugin install path detection (advanced).
+#   ANBAN_PLUGIN_ROOT  Override plugin install path detection (advanced).
 
 set -euo pipefail
 
@@ -29,8 +29,8 @@ CODEX_CONFIG="$CODEX_DIR/config.toml"
 # --- 1. Discover plugin install path -------------------------------------
 
 discover_plugin_root() {
-  if [[ -n "${ANBANWRITER_PLUGIN_ROOT:-}" ]]; then
-    echo "$ANBANWRITER_PLUGIN_ROOT"
+  if [[ -n "${ANBAN_PLUGIN_ROOT:-}" ]]; then
+    echo "$ANBAN_PLUGIN_ROOT"
     return
   fi
 
@@ -57,7 +57,7 @@ if [[ ! -f "$PLUGIN_ROOT/skills/article/SKILL.md" ]]; then
   echo "[install-subagents] Subagent skill loading may fail. Install the plugin first:" >&2
   echo "[install-subagents]   codex plugin marketplace add $REPO_ROOT/codex" >&2
   echo "[install-subagents]   codex plugin install anbanwriter" >&2
-  echo "[install-subagents] Or set ANBANWRITER_PLUGIN_ROOT to point at the installed plugin directory." >&2
+  echo "[install-subagents] Or set ANBAN_PLUGIN_ROOT to point at the installed plugin directory." >&2
 fi
 
 # --- 2. Copy subagent TOMLs into ~/.codex/agents/ -------------------------
@@ -221,8 +221,8 @@ fi
 echo
 echo "[install-subagents] Done."
 echo "[install-subagents] Next steps:"
-echo "  1. Set ANBANWRITER_API_KEY in your shell (e.g. ~/.zshrc):"
-echo "       export ANBANWRITER_API_KEY=\"<your-api-key>\""
+echo "  1. Set ANBAN_API_KEY in your shell (e.g. ~/.zshrc):"
+echo "       export ANBAN_API_KEY=\"<your-api-key>\""
 echo "  2. Restart Codex."
 echo "  3. Verify with:"
 echo "       /agents        # should list 5 anbanwriter subagents"

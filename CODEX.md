@@ -20,7 +20,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 - **Skills** (`skills/`) — auto-discovered by Codex (18 leaf skills, identical content to `claudecode/skills/`; plus 2 reference-only directories `video-composition/` and `writers/` with no `SKILL.md`)
 - **Subagents** (`agents/`) — five TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
-- **MCP server** (`.mcp.json`) — HTTP endpoint at `${ANBANWRITER_API_URL:-https://api.creator.anbanai.com}/mcp`
+- **MCP server** (`.mcp.json`) — HTTP endpoint at `${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp`
 - **Hooks** (`hooks/hooks.json`) — lifecycle events mirroring `claudecode/hooks/hooks.json`, with `TaskCompleted` replaced by `Stop` (Codex has no `TaskCompleted` event)
 
 ### Subagents (`agents/`)
@@ -55,7 +55,7 @@ Key skill groups:
 
 ### MCP Server (`.mcp.json`)
 
-Connects to the `anbanwriter` MCP server at `${ANBANWRITER_API_URL:-https://api.creator.anbanai.com}/mcp` with Bearer token auth via `${ANBANWRITER_API_KEY}`. Key MCP tools:
+Connects to the `anbanwriter` MCP server at `${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp` with Bearer token auth via `${ANBAN_API_KEY}`. Key MCP tools:
 
 - `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `prepare_workspace`, `archive_workspace`

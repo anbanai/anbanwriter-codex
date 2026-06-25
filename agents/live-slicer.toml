@@ -303,8 +303,8 @@ live-slicer agent 已完成执行。请检查 output/live-slice/ 目录下的产
 """
 
 [mcp_servers.anban]
-url = "${ANBANWRITER_API_URL:-https://api.creator.anbanai.com}/mcp"
-bearer_token_env_var = "ANBANWRITER_API_KEY"
+url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
+bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/live-slice/SKILL.md"
