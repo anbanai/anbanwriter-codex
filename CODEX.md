@@ -50,7 +50,7 @@ Key skill groups:
 - **Live slicing**: `live-slice`, `capcut-draft`
 - **Design**: `line-art-coloring`
 - **Short video**: `short-video-cover`, `portrait-pose-variants`
-- **Setup**: `setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
+- **Setup**: `anban-setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
 - **Config**: `config` (project-level runtime configuration: writer, theme, image provider, positioning)
 
 ### MCP Server (`.mcp.json`)

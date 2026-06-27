@@ -2,8 +2,6 @@
 
 Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit for OpenAI Codex — MCP server with AI-powered writing, visual design, and multi-platform publishing. This is the Codex-native port of [`claudecode/`](https://github.com/anbanai/anbanwriter-claudecode), connecting to the same `anbanwriter` MCP server.
 
-> **Upgrading from an older version?** The `$init` command has been renamed to `$setup` to align with the other anbanwriter plugins. If you previously ran `$init` to configure your API Key, use `$setup` instead.
-
 ## What you get
 
 - **23 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, Seednote viral analysis, live video slicing, line-art coloring, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
@@ -76,10 +74,10 @@ Expected: ~23 anbanwriter skills listed (article, content-writing, seednote, eco
 Expected: 6 subagents listed (wechatarticle, seednote, designer, live-slicer, short-video-studio, ecommerce) with their nicknames.
 
 ```
-$setup
+$anban-setup
 ```
 
-Expected: the setup skill runs `list_projects` and returns your configured projects. If it fails, your `ANBAN_API_KEY` is missing or invalid.
+Expected: the anban-setup skill runs `list_projects` and returns your configured projects. If it fails, your `ANBAN_API_KEY` is missing or invalid.
 
 ## Usage
 
