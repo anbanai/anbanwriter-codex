@@ -31,7 +31,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 
 **项目选定后，仅对 `$PROJECT_ID` 调用：**
 
-- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、写作风格。`task_id` 让服务端额外返回任务关联模板的内容脚手架（`template_writing_style` 写作风格 / `template_structure` 内容结构 / `template_example` 示例），若返回了这些字段，创作正文与配图时必须严格遵守；不传则只拿到 project 级信息。**务必区分两个易混字段**：顶层 `author` 是公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；`template_writing_style` 是**写作口吻**（驱动正文语气），`template_author_avatar` 是人设头像；三者用途不同，**绝非署名、绝不混用**。
+- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、风格维度。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层），不传则只拿到 project 级信息。**务必区分两个易混字段**：顶层 `byline` 是公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；`writing_voice` 是**写作口吻**（驱动正文语气），`persona_avatar` 是人设头像；三者用途不同，**绝非署名、绝不混用**。
 - `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题（如返回错误可忽略，用空列表继续）
 - `prepare_workspace(content_type="articles", task_id=TASK_ID)` → 工作目录路径 `$DIR`
 - Bash 执行 `mkdir -p "$DIR"` 创建目录
@@ -58,7 +58,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 ### 步骤 4：AI 去痕与合规检查
 
 使用 `content-writing` skill：
-- 先执行 AI 去痕（`gentle` 模式）
+- 先执行 AI 去痕（`humanizer` skill，无强度档位）
 - 再执行违禁词合规检查
 - 创建 `$DIR/content-quality-report.md`，检查用户需求覆盖、账号定位一致性、历史文章差异、章节实质内容、研究结论引用、AI 套话风险
 - 任一检查项不通过时，必须回到步骤 3/4 重写；不得进入 SEO、视觉或发布阶段
@@ -75,7 +75,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 ### 步骤 6：封面设计与配图规划
 
 使用 `article-visual-design` skill：
-- **6a: 视觉风格确定（配置优先，分析兜底）** — 先读 `get_project_profile` 返回的任务已解析视觉风格（`style` / `style_source` / `template_style`，权威锚点）；非空则以它为核心，三维分析（账号定位 + 内容主题 + 受众）只做补充细化；为空则三维分析兜底。视觉风格**不取自 writer YAML**（writer 仅决定文字风格，已不再携带 `cover_style`/`cover_prompt` 等视觉/封面字段）
+- **6a: 视觉风格确定（配置优先，分析兜底）** — 先读 `get_project_profile` 返回的任务已解析视觉风格（`visual_style` / `visual_style_source`，权威锚点）；非空则以它为核心，三维分析（账号定位 + 内容主题 + 受众）只做补充细化；为空则三维分析兜底。视觉风格**不取自 writer YAML**（writer 仅决定文字风格，已不再携带 `cover_style`/`cover_prompt` 等视觉/封面字段）
 - **6b: 生成封面（委托 article-cover-design skill，生成与上传原子化）** — using the `article-cover-design` skill 推导封面视觉概念（硬编码官方比例 900×383/2.35:1、中心安全区保证转发卡 1:1 完整、纯图无文字、从文章核心隐喻推导、vision 6 维评分卡把关），调用 `generate_image(project_id="$PROJECT_ID", prompt=<封面提示词>, image_type="cover", output_path="$DIR/cover.png", task_id="$TASK_ID", size="21:9", upload_to_cdn=true, verify_with_vision=true, verification_prompt=<6 维评分卡>)`。`size="21:9"` 仅生成提示比，**服务端按 platform=article+cover 精确裁到 900×383**（微信零裁剪，告别需手动裁剪的图）；**同一调用内完成生成→校验→压缩→上传微信 CDN**，直接返回 `media_id`（发布草稿的 thumb）+ `wechat_url`。**不再单独调用 `upload_image`**。若返回 `upload_error`（生成成功但上传失败），用 `upload_image(file_path="$DIR/cover.png")` 单独重传即可，无需重新生成
 - **6c: 创建配图规划** — 逐章分析文章，创建 `$DIR/image-plan.md`；每张图必须包含 `chapter_title`、`core_point`、`source_excerpt`、`visual_subject`、`composition_type`、`prompt_strategy`
 - 记录 `$VISUAL_STYLE`、`$COLOR_PALETTE`、`$COVER_PATH`、封面 `media_id`
@@ -108,7 +108,7 @@ description: 微信公众号图文文章全自动创作。用户提到"写文章
 
 使用 `article-publishing` skill：
 - 从 `$DIR/seo-result.md` 读取优化后的标题和摘要
-- 创建 `draft.json`（title 使用 SEO 优化标题，digest 使用 SEO 优化摘要，`author` **仅**取自步骤 1 `get_project_profile` 顶层 `author`——公众号署名原样填入，空则省略，**禁用** `template_writing_style` 顶替，详见 article-publishing skill「作者字段来源」）
+- 创建 `draft.json`（title 使用 SEO 优化标题，digest 使用 SEO 优化摘要，`author` **仅**取自步骤 1 `get_project_profile` 顶层 `byline`——公众号署名原样填入，空则省略，**禁用** `writing_voice` 顶替，详见 article-publishing skill「作者字段来源」）
 - 仅当 `$DIR/final-review.md` 全部通过时，发布到草稿箱：`publish_draft`
 
 ---

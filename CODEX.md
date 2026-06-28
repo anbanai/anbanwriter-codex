@@ -59,7 +59,7 @@ Connects to the `anbanwriter` MCP server at `${ANBAN_API_URL:-https://api.creato
 
 - `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `prepare_workspace`, `archive_workspace`
-- `write_article`, `convert_markdown`, `humanize_article`, `optimize_seo`
+- `write_article`, `convert_markdown`, `optimize_seo`
 - `generate_image`, `upload_image`, `download_image`, `compress_image`, `analyze_image`
 - `publish_draft` (WeChat draft box)
 - `get_feed_detail` (SeedNote source note fetching)
@@ -71,7 +71,7 @@ Themes define visual styling for article排版. Themes are managed server-side v
 
 ### Writers (`skills/writers/`)
 
-YAML files defining **writing** styles (the writer dimension only). Each has `name`, `english_name`, `writing_prompt` (required), plus optional `core_beliefs`, `title_formulas`, `quote_templates`. Writers **do not** carry visual identity — image visual style is an orthogonal dimension configured per project/template/plan/task (resolved at task creation as the `style` field; see `article-visual-design` skill). Built-in styles: `dan-koe`, `cultural-depth`, `casual-science`.
+YAML files defining **writing** styles (the writer dimension only). Each has `name`, `english_name`, `writing_prompt` (required), plus optional `core_beliefs`, `title_formulas`, `quote_templates`. Writers **do not** carry visual identity — image visual style is an orthogonal dimension configured per project/task (resolved at runtime as the `visual_style` field; see `article-visual-design` skill). Built-in styles: `dan-koe`, `cultural-depth`, `casual-science`.
 
 ### Hooks (`hooks/hooks.json`)
 
