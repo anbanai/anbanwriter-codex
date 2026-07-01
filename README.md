@@ -4,15 +4,15 @@ Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit
 
 ## What you get
 
-- **23 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, Seednote viral analysis, live video slicing, line-art coloring, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
+- **24 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, Seednote viral analysis, live video slicing, video-use editing, line-art coloring, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
 - **6 native Codex subagents**: end-to-end orchestrators (10,000+ word pipelines each) for the workflows above.
-- **MCP integration**: connects to the anbanwriter HTTP MCP server for project management, image generation, WeChat publishing, TingWu transcription, and FFmpeg-driven clip assembly.
+- **MCP integration**: connects to the anbanwriter HTTP MCP server for project management, image generation, WeChat publishing, TingWu/OpenAI-compatible FunASR transcription, and FFmpeg-driven clip assembly.
 - **Lifecycle hooks**: `SubagentStop` (per-agent delivery summary) + `Stop` (generic QA gate).
 
 ## Prerequisites
 
 - **Codex CLI** installed (`codex --version` works)
-- **`ffmpeg` + `ffprobe`** (only required for `live-slicer` / `live-slice`)
+- **`ffmpeg` + `ffprobe`** (required for `live-slicer`, `live-slice`, and `video-use`)
 - **`jq`** (used by some skill-side validation steps)
 - **An anbanwriter account** at https://creator.anbanai.com — grab your API Key
 
@@ -65,13 +65,13 @@ After restart, run:
 /skills
 ```
 
-Expected: ~23 anbanwriter skills listed (article, content-writing, seednote, ecommerce, line-art-coloring, etc.) with no "some skills omitted" warning.
+Expected: anbanwriter skills listed (article, content-writing, seednote, ecommerce, video-use, line-art-coloring, etc.) with no "some skills omitted" warning.
 
 ```
 /agents
 ```
 
-Expected: 6 subagents listed (wechatarticle, seednote, designer, live-slicer, short-video-studio, ecommerce) with their nicknames.
+Expected: 6 subagents listed (wechatarticle, seednote, designer, live-slicer, video, ecommerce) with their nicknames.
 
 ```
 $anban-setup
@@ -125,7 +125,7 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 | `seednote` | Topic/viral analysis → Markdown note (title + body + hashtags) → cover + 3-8 content images + tail image → archive |
 | `designer` | Per-lineart `colored_NN.png` + Color Bible + consistency report (PASS/MINOR/FAIL per entity) + manual-review flags |
 | `live-slicer` | metadata.json + audio.mp3 + cover.jpg + TingWu analysis + filtered sentences + clip plan + exported MP4s + CapCut drafts + transcript.md + summary.md |
-| `short-video-studio` | Routes between `short-video-cover` (replicate a reference cover) and `portrait-pose-variants` (N identity-locked pose variants) based on input |
+| `video` | Routes between `dreamina-video` generation, `video-use` footage editing, `short-video-cover`, `portrait-pose-variants`, and optional `capcut-draft` delivery |
 | `ecommerce` | Product Bible (analyze product photos) → selling points (FABE) → asset plan → anchor-first generation with provider-adaptive ref strategy + vision self-check → compliance (广告法极限词) → archive + manifest |
 
 ## Troubleshooting

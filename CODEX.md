@@ -10,7 +10,7 @@ This file provides guidance to OpenAI Codex (codex CLI / IDE) when working with 
 - **SeedNote posts** (种草笔记)
 - **Live video slicing** (直播切片)
 - **Line art coloring** (线稿上色)
-- **Short video cover** (短视频封面复刻 + 人像姿态变体)
+- **Video creation** (视频生成 + 成片剪辑 + 短视频封面复刻 + 人像姿态变体)
 
 It connects to the same `anbanwriter` MCP server as `claudecode/` and `openclaw/`. Content themes, writers, layouts, and the MCP protocol are identical across all three plugins.
 
@@ -18,7 +18,7 @@ It connects to the same `anbanwriter` MCP server as `claudecode/` and `openclaw/
 
 The plugin follows Codex's **Skill + Subagent + MCP** model:
 
-- **Skills** (`skills/`) — auto-discovered by Codex (23 leaf skills, identical content to `claudecode/skills/`; plus 1 reference-only directory `writers/` with no `SKILL.md`)
+- **Skills** (`skills/`) — auto-discovered by Codex (24 leaf skills, identical content to `claudecode/skills/`; plus 1 reference-only directory `writers/` with no `SKILL.md`)
 - **Subagents** (`agents/`) — six TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
 - **MCP server** (`.mcp.json`) — HTTP endpoint at `${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp`
 - **Hooks** (`hooks/hooks.json`) — lifecycle events mirroring `claudecode/hooks/hooks.json`, with `TaskCompleted` replaced by `Stop` (Codex has no `TaskCompleted` event)
@@ -31,7 +31,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 | `seednote` | "种草笔记", "种草", "复刻", "仿写" | Research → Viral analysis (replicate) → Content → Image plan → Cover + Content images → Compliance → Archive |
 | `live-slicer` | "直播切片", "剪直播", "听悟" | ffmpeg prep → TingWu transcription → Invalid sentence filter → Segment/subject planning → Batch cuts/concat → CapCut export → Report |
 | `designer` | "上色", "填色", "线稿", "color consistency", "designer" | Init → Progressive coloring → Full audit → Best-effort correction/backtracking → Report with `needs_img2img` where strict line preservation is impossible |
-| `short-video-studio` | "短视频封面", "爆款封面", "封面复刻", "人像姿态", "表情封面" | Intent routing → Workspace init → Mode branch: replication (short-video-cover skill) or pose-variants (portrait-pose-variants skill) → Generation + audit → Archive report |
+| `video` | "视频生成", "即梦", "Seedance", "剪视频", "去口癖", "字幕", "短视频封面", "人像姿态" | Intent routing → Workspace init → Branch: dreamina-video / video-use / short-video-cover / portrait-pose-variants / capcut-draft → Quality review → Archive report |
 
 **Codex-specific behavior**:
 - Subagents only spawn when the user **explicitly** asks ("use the wechatarticle subagent to ...", "delegate to X"). Codex does not auto-spawn subagents.
@@ -49,7 +49,7 @@ Key skill groups:
 - **SeedNote**: `seednote`, `seednote-research`, `seednote-viral-analysis`, `seednote-writing`, `seednote-visual-design`
 - **Live slicing**: `live-slice`, `capcut-draft`
 - **Design**: `line-art-coloring`
-- **Short video**: `short-video-cover`, `portrait-pose-variants`
+- **Video**: `dreamina-video`, `video-use`, `short-video-cover`, `portrait-pose-variants`, `capcut-draft`
 - **Setup**: `anban-setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
 - **Config**: `config` (project-level runtime configuration: writer, theme, image provider, positioning)
 
@@ -64,6 +64,7 @@ Connects to the `anbanwriter` MCP server at `${ANBAN_API_URL:-https://api.creato
 - `publish_draft` (WeChat draft box)
 - `get_feed_detail` (SeedNote source note fetching)
 - `upload_live_audio`, `create_live_analysis_task`, `query_live_analysis_task`, `recognize_live_invalid_sentences`, `recognize_live_segments`, `build_live_clip_plan`, `build_live_subject_clip_plan`, `build_live_clip_manifest`, `recognize_live_subjects`, `complete_live_subject`
+- `upload_video_audio`, `create_video_asr_task`, `query_video_asr_task`, `pack_video_transcripts`
 
 ### Themes (Server-managed)
 
@@ -88,7 +89,7 @@ Lifecycle hooks for quality verification. **Plugin-bundled hooks are not trusted
 - **Image reference chain**: First image establishes visual style; subsequent images use the first as reference to maintain consistency. For line-art coloring, current `generate_image` is best-effort reference-image generation, not a guaranteed line-preserving colorize tool.
 - **Skill references**: Subagents invoke skills via `using the <skill-name> skill` phrasing, not the Skill tool.
 - **Content is Chinese**: All generated content targets Chinese social media platforms. Prohibited words lists (违禁词) are in `references/prohibited-words.md`.
-- **Live slicing media dependency**: `live-slicer` and `live-slice` require local `ffmpeg` and `ffprobe`; they support continuous clips and subject-script multi-part concat clips without a local helper runtime.
+- **Video media dependency**: `live-slicer`, `live-slice`, and `video-use` require local `ffmpeg` and `ffprobe`; `video-use` uses OpenAI-compatible FunASR MCP tools for word-level ASR.
 - **Subagent invocation**: Codex subagents do NOT auto-spawn. To run a full pipeline, the user must explicitly invoke: "use the wechatarticle subagent to write an article about X" or "delegate to designer: colorize line art at /path".
 
 ## Modifying This Plugin
