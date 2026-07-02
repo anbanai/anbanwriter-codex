@@ -1,6 +1,6 @@
 # Codex subagent registration — append (or merge) into ~/.codex/config.toml
 #
-# This file is consumed by install-subagents.sh. It registers the six anbanwriter
+# This file is consumed by install-subagents.sh. It registers the six anban-creator
 # subagents and enables the multi-agent feature flag.
 #
 # WARNING: do NOT paste this verbatim if your ~/.codex/config.toml already declares

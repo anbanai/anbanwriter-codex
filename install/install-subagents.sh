@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install-subagents.sh — Install anbanwriter Codex subagents (idempotent)
+# install-subagents.sh — Install Anban Creator Codex subagents (idempotent)
 #
 # What this script does:
 #   1. Copies codex/agents/*.toml into ~/.codex/agents/, substituting __PLUGIN_ROOT__
@@ -34,10 +34,10 @@ discover_plugin_root() {
     return
   fi
 
-  # Pattern: ~/.codex/plugins/cache/<marketplace>/anbanwriter/<version>/skills/article/SKILL.md
+  # Pattern: ~/.codex/plugins/cache/<marketplace>/anban/<version>/skills/article/SKILL.md
   local candidate
   candidate="$(find "$CODEX_DIR/plugins/cache" -maxdepth 6 \
-    -path "*anbanwriter*/skills/article/SKILL.md" -type f 2>/dev/null \
+    -path "*/anban/*/skills/article/SKILL.md" -type f 2>/dev/null \
     | head -n 1 | sed 's|/skills/article/SKILL.md$||')"
 
   if [[ -n "$candidate" ]]; then
@@ -56,7 +56,7 @@ if [[ ! -f "$PLUGIN_ROOT/skills/article/SKILL.md" ]]; then
   echo "[install-subagents] WARNING: $PLUGIN_ROOT/skills/article/SKILL.md not found." >&2
   echo "[install-subagents] Subagent skill loading may fail. Install the plugin first:" >&2
   echo "[install-subagents]   codex plugin marketplace add $REPO_ROOT/codex" >&2
-  echo "[install-subagents]   codex plugin install anbanwriter" >&2
+  echo "[install-subagents]   codex plugin install anban" >&2
   echo "[install-subagents] Or set ANBAN_PLUGIN_ROOT to point at the installed plugin directory." >&2
 fi
 
@@ -225,7 +225,7 @@ echo "  1. Set ANBAN_API_KEY in your shell (e.g. ~/.zshrc):"
 echo "       export ANBAN_API_KEY=\"<your-api-key>\""
 echo "  2. Restart Codex."
 echo "  3. Verify with:"
-echo "       /agents        # should list 6 anbanwriter subagents"
-echo "       /skills        # should list anbanwriter skills, including video-use"
+echo "       /agents        # should list 6 Anban Creator subagents"
+echo "       /skills        # should list Anban Creator skills, including video-use"
 echo "  4. Trigger explicitly:"
 echo "       use the wechatarticle subagent to write an article about X"

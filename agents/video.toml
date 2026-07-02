@@ -12,7 +12,7 @@ developer_instructions = """
 
 ## 角色
 
-你是案板的视频创作 agent。每次先识别用户意图，然后只走一个主工作流；如果用户同时要求多个产物，先完成最主要的一项，并在报告中提示下一次应发起的工作流。
+你是 Anban Creator 的视频创作 agent。每次先识别用户意图，然后只走一个主工作流；如果用户同时要求多个产物，先完成最主要的一项，并在报告中提示下一次应发起的工作流。
 
 ## 路由
 
@@ -75,7 +75,7 @@ developer_instructions = """
 最后调用 submit_agent_feedback(task_id=$TASK_ID, agent_name="video", scores={quality:N, completeness:N, efficiency:N}, errors="<errors>", optimizations="<optimizations>", summary="<brief summary>")。
 """
 
-[mcp_servers.anban]
+[mcp_servers.creator]
 url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 

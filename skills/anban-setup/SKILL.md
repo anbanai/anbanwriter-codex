@@ -3,7 +3,7 @@ name: anban-setup
 description: Use when user mentions "初始化", "anban-setup", "第一次使用", "API Key", "密钥", or when MCP tools fail with auth/connection errors suggesting missing ANBAN_API_KEY.
 ---
 
-# anban-setup — anbanwriter 初始化 (Codex)
+# anban-setup — Anban Creator 初始化 (Codex)
 
 ## 预检
 
@@ -16,7 +16,7 @@ description: Use when user mentions "初始化", "anban-setup", "第一次使用
 
 向用户说明：
 
-> anbanwriter MCP 服务器需要 API Key 进行认证。请前往 https://creator.anbanai.com 注册账号并获取 API Key。
+> Anban Creator MCP 服务器需要 API Key 进行认证。请前往 https://creator.anbanai.com 注册账号并获取 API Key。
 
 通过 AskUserQuestion 向用户索取密钥值。
 
@@ -30,7 +30,7 @@ description: Use when user mentions "初始化", "anban-setup", "第一次使用
    - 然后执行 `source ~/.zshrc`（或重启终端）
 2. **次选方案**：如果用户希望走 `~/.codex/config.toml`，提示其手动追加以下段（先 Read 现有文件确认无重复，再用 Edit 合并，绝不覆盖）：
    ```toml
-   [mcp_servers.anban]
+   [mcp_servers.creator]
    url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
    bearer_token_env_var = "ANBAN_API_KEY"
    ```
@@ -58,7 +58,7 @@ export ANBAN_DEFAULT_PROJECT="<项目 ID>"
 
 ## 完成
 
-**写作去 AI SKILL 可用性校验**：确认去 AI 味能力已随插件内置——用 Bash 执行 `test -f "$(codex plugin root anbanwriter 2>/dev/null || echo "$HOME/.codex/plugins")/skills/humanizer/SKILL.md" && echo OK`（或 Glob 检查插件目录下的 `skills/humanizer/SKILL.md`）。该 SKILL 被 `content-writing`、`seednote-writing`、`ecommerce-copywriting` 写作流程调用，随插件安装即就绪，无需联网或 `git clone`。若缺失，提示用户重新安装 anbanwriter 插件。
+**写作去 AI SKILL 可用性校验**：确认去 AI 味能力已随插件内置——用 Bash 执行 `test -f "$(codex plugin root anban 2>/dev/null || echo "$HOME/.codex/plugins")/skills/humanizer/SKILL.md" && echo OK`（或 Glob 检查插件目录下的 `skills/humanizer/SKILL.md`）。该 SKILL 被 `content-writing`、`seednote-writing`、`ecommerce-copywriting` 写作流程调用，随插件安装即就绪，无需联网或 `git clone`。若缺失，提示用户重新安装 Anban Creator 插件。
 
 告知用户：
 
@@ -73,13 +73,13 @@ export ANBAN_DEFAULT_PROJECT="<项目 ID>"
 ## 常见问题
 
 **Q: 重启后 `list_projects` 仍然失败？**
-A: 检查 `ANBAN_API_KEY` 是否正确导出（在新终端执行 `echo $ANBAN_API_KEY` 验证）。检查 `~/.codex/config.toml` 是否包含 `[mcp_servers.anban]` 段，且 `bearer_token_env_var` 指向正确的环境变量名。检查网络是否能访问 `https://api.creator.anbanai.com`（如使用自建服务器，检查 `ANBAN_API_URL` 是否正确）。
+A: 检查 `ANBAN_API_KEY` 是否正确导出（在新终端执行 `echo $ANBAN_API_KEY` 验证）。检查 `~/.codex/config.toml` 是否包含 `[mcp_servers.creator]` 段，且 `bearer_token_env_var` 指向正确的环境变量名。检查网络是否能访问 `https://api.creator.anbanai.com`（如使用自建服务器，检查 `ANBAN_API_URL` 是否正确）。
 
 **Q: 想切换到另一个 API 地址？**
-A: 修改 shell 中的 `export ANBAN_API_URL=...`，或修改 `~/.codex/config.toml` 内 `[mcp_servers.anban] url` 字段，然后重启 Codex。
+A: 修改 shell 中的 `export ANBAN_API_URL=...`，或修改 `~/.codex/config.toml` 内 `[mcp_servers.creator] url` 字段，然后重启 Codex。
 
 **Q: 已有 API Key 但忘了存在哪里？**
-A: 在终端执行 `echo $ANBAN_API_KEY`；若为空，检查 `~/.zshrc` / `~/.bashrc`，或 `~/.codex/config.toml` 的 `[mcp_servers.anban]` 段。
+A: 在终端执行 `echo $ANBAN_API_KEY`；若为空，检查 `~/.zshrc` / `~/.bashrc`，或 `~/.codex/config.toml` 的 `[mcp_servers.creator]` 段。
 
-**Q: 想同时使用多个 anbanwriter 服务（如生产 + 测试）？**
-A: 在 `~/.codex/config.toml` 注册第二个 MCP 服务器（例如 `[mcp_servers.anban-staging]`），用不同环境变量承载各自的 Bearer Token，再让 subagent 在 `[mcp_servers]` 段中按需引用。
+**Q: 想同时使用多个 Anban Creator 服务（如生产 + 测试）？**
+A: 在 `~/.codex/config.toml` 注册第二个 MCP 服务器（例如 `[mcp_servers.creator-staging]`），用不同环境变量承载各自的 Bearer Token，再让 subagent 在 `[mcp_servers]` 段中按需引用。

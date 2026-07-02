@@ -1,12 +1,12 @@
-# anbanwriter for Codex
+# Anban Creator for Codex
 
-Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit for OpenAI Codex — MCP server with AI-powered writing, visual design, and multi-platform publishing. This is the Codex-native port of [`claudecode/`](https://github.com/anbanai/anbanwriter-claudecode), connecting to the same `anbanwriter` MCP server.
+Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit for OpenAI Codex — MCP server with AI-powered writing, visual design, and multi-platform publishing. This is the Codex-native port of [`claudecode/`](https://github.com/anbanai/anban-creator-claudecode), connecting to the same `anban-creator` MCP server.
 
 ## What you get
 
 - **24 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, Seednote viral analysis, live video slicing, video-use editing, line-art coloring, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
 - **6 native Codex subagents**: end-to-end orchestrators (10,000+ word pipelines each) for the workflows above.
-- **MCP integration**: connects to the anbanwriter HTTP MCP server for project management, image generation, WeChat publishing, TingWu/OpenAI-compatible FunASR transcription, and FFmpeg-driven clip assembly.
+- **MCP integration**: connects to the anban-creator HTTP MCP server for project management, image generation, WeChat publishing, TingWu/OpenAI-compatible FunASR transcription, and FFmpeg-driven clip assembly.
 - **Lifecycle hooks**: `SubagentStop` (per-agent delivery summary) + `Stop` (generic QA gate).
 
 ## Prerequisites
@@ -14,7 +14,7 @@ Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit
 - **Codex CLI** installed (`codex --version` works)
 - **`ffmpeg` + `ffprobe`** (required for `live-slicer`, `live-slice`, and `video-use`)
 - **`jq`** (used by some skill-side validation steps)
-- **An anbanwriter account** at https://creator.anbanai.com — grab your API Key
+- **An Anban Creator account** at https://creator.anbanai.com — grab your API Key
 
 ## Installation
 
@@ -24,7 +24,7 @@ From a local clone:
 
 ```bash
 codex plugin marketplace add ./codex
-codex plugin install anbanwriter
+codex plugin install anban
 ```
 
 ### 2. Install the subagents
@@ -65,7 +65,7 @@ After restart, run:
 /skills
 ```
 
-Expected: anbanwriter skills listed (article, content-writing, seednote, ecommerce, video-use, line-art-coloring, etc.) with no "some skills omitted" warning.
+Expected: Anban Creator skills listed (article, content-writing, seednote, ecommerce, video-use, line-art-coloring, etc.) with no "some skills omitted" warning.
 
 ```
 /agents
@@ -140,9 +140,9 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 ### Subagent fails with "MCP tool not found"
 
 - `echo $ANBAN_API_KEY` — should print your key.
-- Confirm `~/.codex/config.toml` has `[mcp_servers.anban]` (the install script does not add this; set it manually if you skipped plugin install):
+- Confirm `~/.codex/config.toml` has `[mcp_servers.creator]` (the install script does not add this; set it manually if you skipped plugin install):
   ```toml
-  [mcp_servers.anban]
+  [mcp_servers.creator]
   url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
   bearer_token_env_var = "ANBAN_API_KEY"
   ```

@@ -4,7 +4,7 @@ This file provides guidance to OpenAI Codex (codex CLI / IDE) when working with 
 
 ## Project Overview
 
-**anbanwriter-codex** is the Codex-native port of the Claude Code plugin `claudecode/`. It targets the same workflows:
+**anban-creator-codex** is the Codex-native port of the Claude Code plugin `claudecode/`. It targets the same workflows:
 
 - **WeChat Official Account articles** (微信公众号图文)
 - **SeedNote posts** (种草笔记)
@@ -12,7 +12,7 @@ This file provides guidance to OpenAI Codex (codex CLI / IDE) when working with 
 - **Line art coloring** (线稿上色)
 - **Video creation** (视频生成 + 成片剪辑 + 短视频封面复刻 + 人像姿态变体)
 
-It connects to the same `anbanwriter` MCP server as `claudecode/` and `openclaw/`. Content themes, writers, layouts, and the MCP protocol are identical across all three plugins.
+It connects to the same `anban-creator` MCP server as `claudecode/` and `openclaw/`. Content themes, writers, layouts, and the MCP protocol are identical across all three plugins.
 
 ## Architecture
 
@@ -35,7 +35,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 **Codex-specific behavior**:
 - Subagents only spawn when the user **explicitly** asks ("use the wechatarticle subagent to ...", "delegate to X"). Codex does not auto-spawn subagents.
-- Each subagent declares its own `[mcp_servers.anban]` and `[[skills.config]]` — it does **not** inherit MCP servers or skills from the parent session.
+- Each subagent declares its own `[mcp_servers.creator]` and `[[skills.config]]` — it does **not** inherit MCP servers or skills from the parent session.
 - Multi-agent mode requires `[features] multi_agent = true` in `~/.codex/config.toml` (the install script adds this automatically).
 - `[agents] max_threads = 6` bounds concurrent subagent execution.
 
@@ -55,7 +55,7 @@ Key skill groups:
 
 ### MCP Server (`.mcp.json`)
 
-Connects to the `anbanwriter` MCP server at `${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp` with Bearer token auth via `${ANBAN_API_KEY}`. Key MCP tools:
+Connects to the `anban-creator` MCP server at `${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp` with Bearer token auth via `${ANBAN_API_KEY}`. Key MCP tools:
 
 - `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `prepare_workspace`, `archive_workspace`

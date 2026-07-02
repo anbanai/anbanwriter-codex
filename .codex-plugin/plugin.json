@@ -1,14 +1,13 @@
 {
-  "name": "anbanwriter",
-  "version": "2.10.2",
-  "description": "Professional WeChat and Seednote (种草笔记) content creation toolkit for OpenAI Codex — MCP server with AI-powered writing, visual design, and multi-platform publishing",
+  "name": "anban",
+  "version": "2.10.3",
+  "description": "Anban Creator plugin for OpenAI Codex — WeChat, Seednote, video, ecommerce, and agent-assisted publishing workflows",
   "author": {
-    "name": "Rick",
-    "email": "medivhzhan@gmail.com",
-    "url": "https://github.com/royalrick"
+    "name": "anbanai",
+    "url": "https://github.com/anbanai"
   },
-  "homepage": "https://github.com/anbanai/anbanwriter-codex",
-  "repository": "https://github.com/anbanai/anbanwriter-codex",
+  "homepage": "https://github.com/anbanai/anban-creator-codex",
+  "repository": "https://github.com/anbanai/anban-creator-codex",
   "license": "MIT",
   "keywords": [
     "wechat",

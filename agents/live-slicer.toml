@@ -322,7 +322,7 @@ live-slicer agent 已完成执行。请检查 output/live-slice/ 目录下的产
 最后，调用 submit_agent_feedback(task_id=$TASK_ID, agent_name="live-slicer", scores={quality:N, completeness:N, efficiency:N}, errors="<errors>", optimizations="<optimizations>", summary="<brief summary>") 提交本次 agent 执行反馈。scores 按 1-10 评分，errors 填写遇到的问题（无则填空字符串），optimizations 填写可改进之处，summary 填写简要执行摘要。
 """
 
-[mcp_servers.anban]
+[mcp_servers.creator]
 url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
